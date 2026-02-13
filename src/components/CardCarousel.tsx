@@ -1,4 +1,5 @@
-import { useRef, useEffect } from "react";
+import { useRef } from "react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import LocationCard from "./LocationCard";
 import type { Location } from "@/data/mockData";
 
@@ -19,29 +20,15 @@ const CardCarousel = ({
   onRate,
   onActiveChange,
 }: CardCarouselProps) => {
-  const scrollRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!scrollRef.current) return;
-    const children = scrollRef.current.children;
-    if (children[activeIndex]) {
-      (children[activeIndex] as HTMLElement).scrollIntoView({
-        behavior: "smooth",
-        block: "nearest",
-        inline: "center",
-      });
+  const handlePrevious = () => {
+    if (activeIndex > 0) {
+      onActiveChange(activeIndex - 1);
     }
-  }, [activeIndex]);
+  };
 
-  const handleScroll = () => {
-    if (!scrollRef.current) return;
-    const container = scrollRef.current;
-    const scrollLeft = container.scrollLeft;
-    const cardWidth = container.children[0]?.clientWidth || 340;
-    const gap = 16;
-    const newIndex = Math.round(scrollLeft / (cardWidth + gap));
-    if (newIndex !== activeIndex && newIndex >= 0 && newIndex < locations.length) {
-      onActiveChange(newIndex);
+  const handleNext = () => {
+    if (activeIndex < locations.length - 1) {
+      onActiveChange(activeIndex + 1);
     }
   };
 
@@ -53,23 +40,61 @@ const CardCarousel = ({
     );
   }
 
+  const currentLocation = locations[activeIndex];
+
   return (
-    <div
-      ref={scrollRef}
-      onScroll={handleScroll}
-      className="flex gap-4 overflow-x-auto snap-x snap-mandatory px-6 pb-4 scrollbar-hide"
-      style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
-    >
-      {locations.map((loc, i) => (
-        <div key={loc.id} className="snap-center flex-shrink-0">
-          <LocationCard
-            location={loc}
-            userAgeGroup={userAgeGroup}
-            onTap={() => onLocationTap(loc)}
-            onRate={() => onRate(loc)}
-          />
+    <div className="w-full space-y-4">
+      {/* Show Only Current Card */}
+      <div className="px-6">
+        <LocationCard
+          location={currentLocation}
+          userAgeGroup={userAgeGroup}
+          onTap={() => onLocationTap(currentLocation)}
+          onRate={() => onRate(currentLocation)}
+        />
+      </div>
+
+      {/* Controls: Buttons + Dots */}
+      <div className="flex items-center justify-between px-6">
+        {/* Previous Button */}
+        <button
+          onClick={handlePrevious}
+          disabled={activeIndex === 0}
+          className="bg-lime-400 hover:bg-lime-500 disabled:bg-gray-400 disabled:cursor-not-allowed p-2 rounded-full transition"
+          aria-label="Previous location"
+        >
+          <ChevronLeft className="w-6 h-6 text-black" />
+        </button>
+
+        {/* Indicator Dots */}
+        <div className="flex justify-center gap-2">
+          {locations.map((_, index) => (
+            <button
+              key={index}
+              onClick={() => onActiveChange(index)}
+              className={`w-2 h-2 rounded-full transition ${
+                index === activeIndex ? "bg-lime-400" : "bg-gray-600"
+              }`}
+              aria-label={`Go to location ${index + 1}`}
+            />
+          ))}
         </div>
-      ))}
+
+        {/* Next Button */}
+        <button
+          onClick={handleNext}
+          disabled={activeIndex === locations.length - 1}
+          className="bg-lime-400 hover:bg-lime-500 disabled:bg-gray-400 disabled:cursor-not-allowed p-2 rounded-full transition"
+          aria-label="Next location"
+        >
+          <ChevronRight className="w-6 h-6 text-black" />
+        </button>
+      </div>
+
+      {/* Card Counter */}
+      <div className="text-center text-sm text-gray-500">
+        {activeIndex + 1} / {locations.length}
+      </div>
     </div>
   );
 };

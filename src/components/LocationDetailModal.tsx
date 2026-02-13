@@ -13,13 +13,19 @@ const LocationDetailModal = ({ location, userAgeGroup, onClose, onRate }: Locati
   const categoryClass = CATEGORY_COLORS[location.category] || CATEGORY_COLORS["Other"];
 
   const emojiCounts: Record<string, { emoji: string; word: string; count: number }> = {};
-  Object.values(location.ratingsByAgeGroup).forEach((group) => {
-    group.topPairs.forEach((pair) => {
-      const key = `${pair.emoji}${pair.word}`;
-      if (!emojiCounts[key]) emojiCounts[key] = { ...pair, count: 0 };
-      emojiCounts[key].count += pair.count;
+  if (location.ratingsByAgeGroup && typeof location.ratingsByAgeGroup === 'object') {
+    Object.values(location.ratingsByAgeGroup).forEach((group) => {
+      if (group?.topPairs && Array.isArray(group.topPairs)) {
+        group.topPairs.forEach((pair) => {
+          if (pair?.emoji && pair?.word) {
+            const key = `${pair.emoji}${pair.word}`;
+            if (!emojiCounts[key]) emojiCounts[key] = { ...pair, count: 0 };
+            emojiCounts[key].count += pair.count;
+          }
+        });
+      }
     });
-  });
+  }
   const sortedEmojis = Object.values(emojiCounts).sort((a, b) => b.count - a.count).slice(0, 6);
   const maxCount = sortedEmojis[0]?.count || 1;
 

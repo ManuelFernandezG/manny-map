@@ -10,11 +10,11 @@ interface LocationCardProps {
 }
 
 const LocationCard = ({ location, userAgeGroup, onTap, onRate }: LocationCardProps) => {
-  const userGroup = userAgeGroup && location.ratingsByAgeGroup[userAgeGroup];
-  const otherGroupKey = Object.keys(location.ratingsByAgeGroup).find(
-    (k) => k !== userAgeGroup && location.ratingsByAgeGroup[k].totalRatings > 20
-  );
-  const otherGroup = otherGroupKey ? location.ratingsByAgeGroup[otherGroupKey] : null;
+  const userGroup = userAgeGroup && location.ratingsByAgeGroup?.[userAgeGroup];
+  const otherGroupKey = location.ratingsByAgeGroup ? Object.keys(location.ratingsByAgeGroup).find(
+    (k) => k !== userAgeGroup && location.ratingsByAgeGroup[k]?.totalRatings > 20
+  ) : null;
+  const otherGroup = otherGroupKey && location.ratingsByAgeGroup ? location.ratingsByAgeGroup[otherGroupKey] : null;
 
   const categoryClass = CATEGORY_COLORS[location.category] || CATEGORY_COLORS["Other"];
 
@@ -39,10 +39,10 @@ const LocationCard = ({ location, userAgeGroup, onTap, onRate }: LocationCardPro
 
       {/* Dominant rating */}
       <div className="flex items-center gap-3 mb-3">
-        <span className="text-4xl">{userGroup?.dominant.emoji || location.dominantEmoji}</span>
+        <span className="text-4xl">{userGroup?.dominant?.emoji || location.dominantEmoji}</span>
         <div>
           <p className="font-display font-bold text-xl text-foreground">
-            {userGroup?.dominant.word || location.dominantWord}
+            {userGroup?.dominant?.word || location.dominantWord}
           </p>
           {userAgeGroup && (
             <p className="text-xs text-muted-foreground">{userAgeGroup} crowd</p>

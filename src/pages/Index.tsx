@@ -1,14 +1,17 @@
 import { useState, useCallback, useMemo } from "react";
-import { Flame } from "lucide-react";
+import { Flame, Loader, UserPlus } from "lucide-react";
 import MapView from "@/components/MapView";
 import CardCarousel from "@/components/CardCarousel";
 import CitySelector from "@/components/CitySelector";
+import LocationSearch from "@/components/LocationSearch";
 import EmojiRatingModal from "@/components/EmojiRatingModal";
 import LocationDetailModal from "@/components/LocationDetailModal";
 import CreateLocationModal from "@/components/CreateLocationModal";
-import { mockLocations, CITIES } from "@/data/mockData";
+import SignupPrompt from "@/components/SignupPrompt";
+import { CITIES } from "@/data/mockData";
 import type { Location } from "@/data/mockData";
 import { toast } from "sonner";
+import { useLocations } from "@/hooks/useLocations";
 
 const Index = () => {
   const [city, setCity] = useState("Ottawa");
@@ -16,7 +19,24 @@ const Index = () => {
   const [selectedLocation, setSelectedLocation] = useState<Location | null>(null);
   const [ratingLocation, setRatingLocation] = useState<Location | null>(null);
   const [createCoords, setCreateCoords] = useState<{ lat: number; lng: number } | null>(null);
-  const [locations, setLocations] = useState(mockLocations);
+  const [showSignupPrompt, setShowSignupPrompt] = useState(false);
+  const [hasSeenSignupPrompt, setHasSeenSignupPrompt] = useState(() => {
+    try {
+      return localStorage.getItem("poppin_signup_prompt_seen") === "true";
+    } catch {
+      return false;
+    }
+  });
+  
+  // Fetch real locations from Firebase
+  const { locations: firebaseLocations, loading, error } = useLocations({ city });
+  const [userCreatedLocations, setUserCreatedLocations] = useState<Location[]>([]);
+  
+  // Combine Firebase locations with user-created ones
+  const allLocations = useMemo(
+    () => [...firebaseLocations, ...userCreatedLocations],
+    [firebaseLocations, userCreatedLocations]
+  );
 
   // Stored age from localStorage
   const [userAgeGroup, setUserAgeGroup] = useState<string | null>(() => {
@@ -29,8 +49,8 @@ const Index = () => {
 
   const cityConfig = CITIES[city];
   const filteredLocations = useMemo(
-    () => locations.filter((l) => l.city === city),
-    [locations, city]
+    () => allLocations.filter((l) => l.city === city),
+    [allLocations, city]
   );
 
   const handleLocationClick = useCallback(
@@ -56,23 +76,46 @@ const Index = () => {
     [filteredLocations]
   );
 
-  const handleRatingSubmit = (
+  const handleRatingSubmit = async (
     emojiWords: { emoji: string; word: string }[],
     ageGroup: string
   ) => {
-    // Store age
-    setUserAgeGroup(ageGroup);
+    if (!ratingLocation) return;
+
     try {
+      // Store age
+      setUserAgeGroup(ageGroup);
       localStorage.setItem("poppin_age_group", ageGroup);
-    } catch {}
 
-    toast.success("Rating saved! Swipe to continue.", {
-      duration: 3000,
-    });
+      // Import rating functions dynamically to avoid circular deps
+      const { submitRating } = await import("@/lib/ratings");
+      const { incrementRatingCount } = await import("@/lib/userId");
 
-    setTimeout(() => {
-      setRatingLocation(null);
-    }, 1500);
+      // Save rating to Firebase
+      await submitRating(ratingLocation.id, emojiWords, ageGroup);
+
+      // Increment local rating count
+      const newCount = incrementRatingCount();
+      console.log(`✅ User has submitted ${newCount} ratings`);
+
+      // Show signup prompt after 3 ratings (once)
+      if (newCount === 3 && !hasSeenSignupPrompt) {
+        setTimeout(() => {
+          setShowSignupPrompt(true);
+        }, 2000);
+      }
+
+      toast.success("Rating saved! Swipe to continue.", {
+        duration: 3000,
+      });
+
+      setTimeout(() => {
+        setRatingLocation(null);
+      }, 1500);
+    } catch (error) {
+      console.error("❌ Error submitting rating:", error);
+      toast.error("Failed to save rating. Please try again.");
+    }
   };
 
   const handleCreateLocation = (data: {
@@ -102,7 +145,7 @@ const Index = () => {
       dominantEmoji: "📍",
       dominantWord: "New",
     };
-    setLocations([...locations, newLoc]);
+    setUserCreatedLocations([...userCreatedLocations, newLoc]);
     setCreateCoords(null);
     toast.success(`${data.name} created! Rate it now.`);
     setTimeout(() => setRatingLocation(newLoc), 500);
@@ -121,27 +164,92 @@ const Index = () => {
         />
       </div>
 
+      {/* Loading overlay */}
+      {loading && (
+        <div className="absolute inset-0 z-[500] flex items-center justify-center bg-background/50 backdrop-blur-sm">
+          <div className="flex flex-col items-center gap-3">
+            <Loader className="h-8 w-8 text-primary animate-spin" />
+            <p className="text-foreground font-display font-semibold">Loading locations...</p>
+            <p className="text-sm text-muted-foreground">Fetching data from Firebase</p>
+          </div>
+        </div>
+      )}
+
+      {/* Error state */}
+      {error && !loading && (
+        <div className="absolute inset-0 z-[500] flex items-center justify-center bg-background/50 backdrop-blur-sm">
+          <div className="bg-card border border-border rounded-xl p-6 text-center max-w-sm">
+            <p className="text-red-400 font-display font-semibold mb-2">Error loading locations</p>
+            <p className="text-sm text-muted-foreground mb-4">{error}</p>
+            <button
+              onClick={() => window.location.reload()}
+              className="px-4 py-2 rounded-lg bg-primary text-primary-foreground font-display font-semibold hover:opacity-90"
+            >
+              Retry
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Top bar */}
-      <div className="absolute top-0 left-0 right-0 z-[1000] p-4 flex items-center justify-between">
-        <div className="flex items-center gap-2.5">
+      <div className="absolute top-0 left-0 right-0 z-[1000] p-4 space-y-3">
+        <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-2 bg-card/90 backdrop-blur-md rounded-lg px-3 py-2 border border-border">
             <Flame className="h-5 w-5 text-primary" />
             <span className="font-display font-bold text-foreground text-lg">poppin'</span>
           </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setShowSignupPrompt(true)}
+              className="flex items-center gap-2 bg-primary text-primary-foreground rounded-lg px-3 py-2 font-display font-semibold text-sm hover:opacity-90 transition-opacity"
+            >
+              <UserPlus className="h-4 w-4" />
+              Sign Up
+            </button>
+            <CitySelector selectedCity={city} onCityChange={setCity} />
+          </div>
         </div>
-        <CitySelector selectedCity={city} onCityChange={setCity} />
+
+        {/* Search Bar */}
+        <div className="flex justify-center">
+          <LocationSearch
+            locations={filteredLocations}
+            onLocationSelect={(loc) => {
+              setSelectedLocation(loc);
+              const idx = filteredLocations.findIndex((l) => l.id === loc.id);
+              if (idx >= 0) setActiveIndex(idx);
+            }}
+          />
+        </div>
       </div>
+
+      {/* Location count badge */}
+      {!loading && (
+        <div className="absolute top-32 right-4 z-[999] bg-card/90 backdrop-blur-md rounded-lg px-3 py-2 border border-border">
+          <p className="text-sm font-display font-semibold text-foreground">
+            {filteredLocations.length} spots
+          </p>
+        </div>
+      )}
 
       {/* Card carousel at bottom */}
       <div className="absolute bottom-0 left-0 right-0 z-[1000] pb-6 pt-2">
-        <CardCarousel
-          locations={filteredLocations}
-          activeIndex={activeIndex}
-          userAgeGroup={userAgeGroup}
-          onLocationTap={(loc) => setSelectedLocation(loc)}
-          onRate={(loc) => setRatingLocation(loc)}
-          onActiveChange={setActiveIndex}
-        />
+        {filteredLocations.length > 0 ? (
+          <CardCarousel
+            locations={filteredLocations}
+            activeIndex={activeIndex}
+            userAgeGroup={userAgeGroup}
+            onLocationTap={(loc) => setSelectedLocation(loc)}
+            onRate={(loc) => setRatingLocation(loc)}
+            onActiveChange={setActiveIndex}
+          />
+        ) : (
+          !loading && (
+            <div className="px-6 py-8 text-center">
+              <p className="text-muted-foreground font-display">No locations in this city yet</p>
+            </div>
+          )
+        )}
       </div>
 
       {/* Modals */}
@@ -172,6 +280,34 @@ const Index = () => {
           lng={createCoords.lng}
           onSubmit={handleCreateLocation}
           onClose={() => setCreateCoords(null)}
+        />
+      )}
+
+      {/* Signup Prompt */}
+      {showSignupPrompt && (
+        <SignupPrompt
+          onClose={() => {
+            setShowSignupPrompt(false);
+            setHasSeenSignupPrompt(true);
+            try {
+              localStorage.setItem("poppin_signup_prompt_seen", "true");
+            } catch {}
+          }}
+          onSignup={() => {
+            toast.info("Signup feature coming soon!");
+            setShowSignupPrompt(false);
+            setHasSeenSignupPrompt(true);
+            try {
+              localStorage.setItem("poppin_signup_prompt_seen", "true");
+            } catch {}
+          }}
+          onSkip={() => {
+            setShowSignupPrompt(false);
+            setHasSeenSignupPrompt(true);
+            try {
+              localStorage.setItem("poppin_signup_prompt_seen", "true");
+            } catch {}
+          }}
         />
       )}
     </div>
