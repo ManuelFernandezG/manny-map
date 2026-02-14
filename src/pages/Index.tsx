@@ -31,7 +31,7 @@ const Index = () => {
   });
   
   // Fetch real locations from Firebase
-  const { locations: firebaseLocations, loading, error } = useLocations({ city });
+  const { locations: firebaseLocations, loading, error, refetch } = useLocations({ city });
   const [userCreatedLocations, setUserCreatedLocations] = useState<Location[]>([]);
   
   // Combine Firebase locations with user-created ones
@@ -106,6 +106,9 @@ const Index = () => {
           setShowSignupPrompt(true);
         }, 2000);
       }
+
+      // Refetch locations so the updated aggregation is visible
+      await refetch();
 
       toast.success("Rating saved! Swipe to continue.", {
         duration: 3000,
