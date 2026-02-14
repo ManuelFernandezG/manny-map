@@ -92,6 +92,7 @@ export async function submitRating(
 
   // Trigger aggregation and return updated fields
   return await aggregateRatings(locationId);
+}
 
 /**
  * Aggregate all ratings for a location
