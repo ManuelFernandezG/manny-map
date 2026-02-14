@@ -3,8 +3,8 @@
  * Creates a persistent user ID for tracking ratings without requiring signup
  */
 
-const USER_ID_KEY = 'poppin_user_id';
-const RATING_COUNT_KEY = 'poppin_rating_count';
+const USER_ID_KEY = 'mannymap_user_id';
+const RATING_COUNT_KEY = 'mannymap_rating_count';
 
 export function getUserId(): string {
   if (typeof window === 'undefined') return '';

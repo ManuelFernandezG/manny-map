@@ -10,7 +10,7 @@ interface LocationSearchProps {
   placeholder?: string;
 }
 
-const RECENT_SEARCHES_KEY = "poppin_recent_searches";
+const RECENT_SEARCHES_KEY = "mannymap_recent_searches";
 const MAX_RECENT = 1;
 
 const LocationSearch = ({

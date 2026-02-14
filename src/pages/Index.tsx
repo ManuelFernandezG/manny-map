@@ -24,7 +24,7 @@ const Index = () => {
   const [showSignupPrompt, setShowSignupPrompt] = useState(false);
   const [hasSeenSignupPrompt, setHasSeenSignupPrompt] = useState(() => {
     try {
-      return localStorage.getItem("poppin_signup_prompt_seen") === "true";
+      return localStorage.getItem("mannymap_signup_prompt_seen") === "true";
     } catch {
       return false;
     }
@@ -43,7 +43,7 @@ const Index = () => {
   // Stored age from localStorage
   const [userAgeGroup, setUserAgeGroup] = useState<string | null>(() => {
     try {
-      return localStorage.getItem("poppin_age_group");
+      return localStorage.getItem("mannymap_age_group");
     } catch {
       return null;
     }
@@ -87,7 +87,7 @@ const Index = () => {
     try {
       // Store age
       setUserAgeGroup(ageGroup);
-      localStorage.setItem("poppin_age_group", ageGroup);
+      localStorage.setItem("mannymap_age_group", ageGroup);
 
       // Import rating functions dynamically to avoid circular deps
       const { submitRating } = await import("@/lib/ratings");
@@ -219,7 +219,7 @@ const Index = () => {
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-2 bg-card/90 backdrop-blur-md rounded-lg px-3 py-2 border border-border">
             <Flame className="h-5 w-5 text-primary" />
-            <span className="font-display font-bold text-foreground text-lg">poppin'</span>
+            <span className="font-display font-bold text-foreground text-lg">Manny Map</span>
           </div>
           <div className="flex items-center gap-2">
             <button
@@ -313,7 +313,7 @@ const Index = () => {
             setShowSignupPrompt(false);
             setHasSeenSignupPrompt(true);
             try {
-              localStorage.setItem("poppin_signup_prompt_seen", "true");
+              localStorage.setItem("mannymap_signup_prompt_seen", "true");
             } catch {}
           }}
           onSignup={() => {
@@ -321,14 +321,14 @@ const Index = () => {
             setShowSignupPrompt(false);
             setHasSeenSignupPrompt(true);
             try {
-              localStorage.setItem("poppin_signup_prompt_seen", "true");
+              localStorage.setItem("mannymap_signup_prompt_seen", "true");
             } catch {}
           }}
           onSkip={() => {
             setShowSignupPrompt(false);
             setHasSeenSignupPrompt(true);
             try {
-              localStorage.setItem("poppin_signup_prompt_seen", "true");
+              localStorage.setItem("mannymap_signup_prompt_seen", "true");
             } catch {}
           }}
         />

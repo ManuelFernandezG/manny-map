@@ -1,4 +1,4 @@
-# Manny Map (poppin')
+# Manny Map
 
 A map-based social discovery app where users rate local spots using emoji-word pairs, segmented by age group. Features divergence detection when different age groups disagree on a location's vibe.
 

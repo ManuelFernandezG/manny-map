@@ -66,7 +66,7 @@ const EmojiRatingModal = ({ location, userAgeGroup, onSubmit, onClose }: EmojiRa
             </div>
             <h3 className="font-display font-bold text-xl text-foreground mb-2">Rating saved!</h3>
             <p className="text-sm text-muted-foreground text-center">
-              This helps others discover what's poppin'.
+              This helps others discover great spots on Manny Map.
             </p>
           </div>
         ) : (
