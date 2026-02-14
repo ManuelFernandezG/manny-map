@@ -1,4 +1,4 @@
-# Manny App
+# Manny Map
 
 Interactive map application built with React, Leaflet, and Firebase.
 
