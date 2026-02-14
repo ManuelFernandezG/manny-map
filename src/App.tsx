@@ -9,7 +9,16 @@ import NotFound from "./pages/NotFound";
 
 const Admin = lazy(() => import("./pages/Admin"));
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 5 * 60 * 1000,
+      gcTime: 30 * 60 * 1000,
+      refetchOnWindowFocus: false,
+      retry: 2,
+    },
+  },
+});
 
 const App = () => (
   <QueryClientProvider client={queryClient}>

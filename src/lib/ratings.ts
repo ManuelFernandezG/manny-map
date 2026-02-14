@@ -34,11 +34,20 @@ export interface Rating {
 /**
  * Submit a rating for a location
  */
+export interface AggregatedFields {
+  totalRatings: number;
+  dominantEmoji: string;
+  dominantWord: string;
+  divergenceScore: number;
+  divergenceFlagged: boolean;
+  ratingsByAgeGroup: Record<string, AgeGroupData>;
+}
+
 export async function submitRating(
   locationId: string,
   emojiWords: { emoji: string; word: string }[],
   ageGroup: string
-): Promise<void> {
+): Promise<AggregatedFields> {
   // Validate pairs against allowed emoji+word combinations
   if (emojiWords.length < 1 || emojiWords.length > 3) {
     throw new Error('Must provide 1-3 emoji-word pairs');
@@ -81,14 +90,13 @@ export async function submitRating(
     console.log('✅ Created new rating');
   }
 
-  // Trigger aggregation
-  await aggregateRatings(locationId);
-}
+  // Trigger aggregation and return updated fields
+  return await aggregateRatings(locationId);
 
 /**
  * Aggregate all ratings for a location
  */
-export async function aggregateRatings(locationId: string): Promise<void> {
+export async function aggregateRatings(locationId: string): Promise<AggregatedFields> {
   try {
     // Fetch all ratings
     const ratingsRef = collection(db, `locations/${locationId}/ratings`);
@@ -96,7 +104,14 @@ export async function aggregateRatings(locationId: string): Promise<void> {
 
     if (ratingsSnap.empty) {
       console.log('No ratings to aggregate');
-      return;
+      return {
+        totalRatings: 0,
+        dominantEmoji: "🔥",
+        dominantWord: "New",
+        divergenceScore: 0,
+        divergenceFlagged: false,
+        ratingsByAgeGroup: {},
+      };
     }
 
     const ratings = ratingsSnap.docs.map(doc => doc.data() as Rating);
@@ -175,19 +190,24 @@ export async function aggregateRatings(locationId: string): Promise<void> {
 
     const divergenceFlagged = divergenceScore >= 0.5 && activeGroups.length >= 2;
 
-    // Update location document
-    const locationRef = doc(db, 'locations', locationId);
-    await updateDoc(locationRef, {
+    const updatedFields: AggregatedFields = {
       totalRatings: ratings.length,
       dominantEmoji: overall.emoji,
       dominantWord: overall.word,
       divergenceScore,
       divergenceFlagged,
       ratingsByAgeGroup,
+    };
+
+    // Update location document
+    const locationRef = doc(db, 'locations', locationId);
+    await updateDoc(locationRef, {
+      ...updatedFields,
       lastAggregated: serverTimestamp()
     });
 
     console.log(`✅ Aggregated ${ratings.length} ratings for location ${locationId}`);
+    return updatedFields;
   } catch (error) {
     console.error('❌ Error aggregating ratings:', error);
     throw error;

@@ -1,5 +1,6 @@
 import { useState, useCallback, useMemo } from "react";
 import { Flame, Loader, UserPlus } from "lucide-react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import MapView from "@/components/MapView";
 import CardCarousel from "@/components/CardCarousel";
 import CitySelector from "@/components/CitySelector";
@@ -30,15 +31,10 @@ const Index = () => {
     }
   });
   
-  // Fetch real locations from Firebase
-  const { locations: firebaseLocations, loading, error, refetch } = useLocations({ city });
-  const [userCreatedLocations, setUserCreatedLocations] = useState<Location[]>([]);
-  
-  // Combine Firebase locations with user-created ones
-  const allLocations = useMemo(
-    () => [...firebaseLocations, ...userCreatedLocations],
-    [firebaseLocations, userCreatedLocations]
-  );
+  const queryClient = useQueryClient();
+
+  // Fetch real locations from Firebase (cached per city by React Query)
+  const { locations, loading, error } = useLocations({ city });
 
   // Stored age from localStorage
   const [userAgeGroup, setUserAgeGroup] = useState<string | null>(() => {
@@ -51,8 +47,8 @@ const Index = () => {
 
   const cityConfig = CITIES[city];
   const filteredLocations = useMemo(
-    () => allLocations.filter((l) => l.city === city),
-    [allLocations, city]
+    () => locations.filter((l) => l.city === city),
+    [locations, city]
   );
 
   const handleLocationClick = useCallback(
@@ -78,49 +74,54 @@ const Index = () => {
     [filteredLocations]
   );
 
-  const handleRatingSubmit = async (
+  const ratingMutation = useMutation({
+    mutationFn: async ({ locationId, emojiWords, ageGroup }: {
+      locationId: string;
+      emojiWords: { emoji: string; word: string }[];
+      ageGroup: string;
+    }) => {
+      const { submitRating } = await import("@/lib/ratings");
+      return submitRating(locationId, emojiWords, ageGroup);
+    },
+    onSuccess: (updatedFields, { ageGroup }) => {
+      // Patch only the rated location in the cache (no full refetch)
+      queryClient.setQueryData<Location[]>(["locations", city], (old) => {
+        if (!old || !ratingLocation) return old;
+        return old.map((loc) =>
+          loc.id === ratingLocation.id ? { ...loc, ...updatedFields } : loc
+        );
+      });
+
+      setUserAgeGroup(ageGroup);
+      localStorage.setItem("mannymap_age_group", ageGroup);
+
+      import("@/lib/userId").then(({ incrementRatingCount }) => {
+        const newCount = incrementRatingCount();
+        console.log(`✅ User has submitted ${newCount} ratings`);
+        if (newCount === 3 && !hasSeenSignupPrompt) {
+          setTimeout(() => setShowSignupPrompt(true), 2000);
+        }
+      });
+
+      toast.success("Rating saved! Swipe to continue.", { duration: 3000 });
+      setTimeout(() => setRatingLocation(null), 1500);
+    },
+    onError: (error) => {
+      console.error("❌ Error submitting rating:", error);
+      toast.error("Failed to save rating. Please try again.");
+    },
+  });
+
+  const handleRatingSubmit = (
     emojiWords: { emoji: string; word: string }[],
     ageGroup: string
   ) => {
     if (!ratingLocation) return;
-
-    try {
-      // Store age
-      setUserAgeGroup(ageGroup);
-      localStorage.setItem("mannymap_age_group", ageGroup);
-
-      // Import rating functions dynamically to avoid circular deps
-      const { submitRating } = await import("@/lib/ratings");
-      const { incrementRatingCount } = await import("@/lib/userId");
-
-      // Save rating to Firebase
-      await submitRating(ratingLocation.id, emojiWords, ageGroup);
-
-      // Increment local rating count
-      const newCount = incrementRatingCount();
-      console.log(`✅ User has submitted ${newCount} ratings`);
-
-      // Show signup prompt after 3 ratings (once)
-      if (newCount === 3 && !hasSeenSignupPrompt) {
-        setTimeout(() => {
-          setShowSignupPrompt(true);
-        }, 2000);
-      }
-
-      // Refetch locations so the updated aggregation is visible
-      await refetch();
-
-      toast.success("Rating saved! Swipe to continue.", {
-        duration: 3000,
-      });
-
-      setTimeout(() => {
-        setRatingLocation(null);
-      }, 1500);
-    } catch (error) {
-      console.error("❌ Error submitting rating:", error);
-      toast.error("Failed to save rating. Please try again.");
-    }
+    ratingMutation.mutate({
+      locationId: ratingLocation.id,
+      emojiWords,
+      ageGroup,
+    });
   };
 
   const handleCreateLocation = async (data: {
@@ -164,7 +165,12 @@ const Index = () => {
         hours: data.hours || undefined,
         description: data.description || undefined,
       };
-      setUserCreatedLocations([...userCreatedLocations, newLoc]);
+
+      // Add to React Query cache (no separate state needed)
+      queryClient.setQueryData<Location[]>(["locations", city], (old) =>
+        old ? [...old, newLoc] : [newLoc]
+      );
+
       setCreateCoords(null);
       toast.success(`${data.name} created! Rate it now.`);
       setTimeout(() => setRatingLocation(newLoc), 500);
