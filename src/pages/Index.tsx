@@ -12,6 +12,8 @@ import { CITIES } from "@/data/mockData";
 import type { Location } from "@/data/mockData";
 import { toast } from "sonner";
 import { useLocations } from "@/hooks/useLocations";
+import { collection, addDoc, serverTimestamp } from "firebase/firestore";
+import { db } from "@/lib/firebase";
 
 const Index = () => {
   const [city, setCity] = useState("Ottawa");
@@ -118,7 +120,7 @@ const Index = () => {
     }
   };
 
-  const handleCreateLocation = (data: {
+  const handleCreateLocation = async (data: {
     name: string;
     category: string;
     address: string;
@@ -126,16 +128,16 @@ const Index = () => {
     description: string;
   }) => {
     if (!createCoords) return;
-    const newLoc: Location = {
-      id: `loc_${Date.now()}`,
+
+    const locationData = {
       name: data.name,
       category: data.category,
       address: data.address,
       neighborhood: "",
       city,
       coordinates: createCoords,
-      hours: data.hours || undefined,
-      description: data.description || undefined,
+      hours: data.hours || "",
+      description: data.description || "",
       isUserCreated: true,
       isPending: true,
       totalRatings: 0,
@@ -144,11 +146,25 @@ const Index = () => {
       divergenceFlagged: false,
       dominantEmoji: "📍",
       dominantWord: "New",
+      createdAt: serverTimestamp(),
     };
-    setUserCreatedLocations([...userCreatedLocations, newLoc]);
-    setCreateCoords(null);
-    toast.success(`${data.name} created! Rate it now.`);
-    setTimeout(() => setRatingLocation(newLoc), 500);
+
+    try {
+      const docRef = await addDoc(collection(db, "locations"), locationData);
+      const newLoc: Location = {
+        id: docRef.id,
+        ...locationData,
+        hours: data.hours || undefined,
+        description: data.description || undefined,
+      };
+      setUserCreatedLocations([...userCreatedLocations, newLoc]);
+      setCreateCoords(null);
+      toast.success(`${data.name} created! Rate it now.`);
+      setTimeout(() => setRatingLocation(newLoc), 500);
+    } catch (error) {
+      console.error("Error creating location:", error);
+      toast.error("Failed to create location. Please try again.");
+    }
   };
 
   return (
