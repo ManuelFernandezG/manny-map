@@ -1,4 +1,4 @@
-# Manny App (poppin') - Evaluation
+# Manny App (poppin') - Feature Evaluation
 
 ## Overview
 
@@ -12,122 +12,188 @@
 
 | Check | Result |
 |-------|--------|
-| `npm run build` | Passes (12s) |
-| `npm run lint` | 8 errors, 8 warnings |
-| `npm run test` | No test files exist |
-| `npm audit` | 8 vulnerabilities (4 moderate, 4 high) |
-| Bundle size | **867 KB** main chunk (gzip: 245 KB) - exceeds 500 KB warning |
+| `npm run build` | Passes (~10s) |
+| `npm run test` | 11 tests passing (aggregation logic) |
+| Bundle size | 848 KB main + 19 KB admin chunk (code-split) |
 
 ---
 
-## Strengths
+## Feature Ratings
 
-### 1. Clear Product Concept
-The emoji + age-group rating model is distinctive. Divergence detection (flagging when age groups disagree) is a genuinely interesting social signal that differentiates this from standard review apps.
+### 1. Map & Location Display - 8/10
 
-### 2. Solid Project Structure
-Clean separation of concerns: pages, components, hooks, lib, data. Path aliasing (`@/`) is configured. Consistent naming conventions throughout.
+| Aspect | Status | Notes |
+|--------|--------|-------|
+| Leaflet map rendering | Working | Tile layer from OpenStreetMap |
+| Emoji markers | Working | Custom `divIcon` with dominant emoji per location |
+| Zoom-based clustering | Working | 3 tiers: aggressive (<13), loose (13-15), none (15+) |
+| City switching | Working | Ottawa, Toronto, Montreal with animated pan |
+| Click-to-create location | Working | Proximity check avoids conflicts with existing markers |
 
-### 3. Good UI Component Foundation
-The shadcn/ui integration provides a comprehensive, accessible component library (40+ primitives). Tailwind theming with CSS variables supports future dark/light mode.
+**Strengths:** Clustering logic is well-tuned with three zoom breakpoints. Emoji markers are visually distinctive.
 
-### 4. Working Firebase Integration
-Real-time data fetching, rating submission with duplicate prevention, server-side timestamps, and aggregation logic are all functional.
-
-### 5. OSM Import Pipeline
-The Overpass API integration for bulk-importing locations is well-implemented with progress callbacks, duplicate checking, rate limiting, and category mapping.
-
----
-
-## Issues
-
-### Critical
-
-**1. No Tests**
-Zero test files exist despite Vitest being configured. The rating aggregation logic (`ratings.ts`), divergence calculation, and data transformation in `useLocations.ts` are complex enough to warrant unit tests. This is the single biggest gap.
-
-**2. Client-Side Aggregation is a Scaling Bottleneck**
-`aggregateRatings()` in `ratings.ts:68` fetches *all* ratings for a location, recalculates everything client-side, then writes back to the location document. This creates:
-- Race conditions if two users rate simultaneously (last write wins, potentially dropping data)
-- Increasing latency as ratings grow (fetching hundreds/thousands of docs per rating)
-- Unnecessary Firestore reads (cost implications)
-
-This should be a Cloud Function triggered on rating writes.
-
-**3. Admin Auth is Client-Side Only**
-`Admin.tsx:9` compares a password against `VITE_ADMIN_PASSWORD` which is bundled into the client JavaScript. Anyone can extract this from the built bundle. The admin dashboard loads all locations from Firestore with no server-side access control - Firestore security rules are the real gate, but the password check provides false confidence.
-
-### High
-
-**4. No Firestore Security Rules Visible**
-There are no `firestore.rules` in the repo. Without rules, the database may be open to arbitrary reads/writes. Any user could modify location documents, delete ratings, or import fake data directly via the Firestore API.
-
-**5. User-Created Locations are Client-Side Only**
-`handleCreateLocation` in `Index.tsx:121` creates a `Location` object in React state but never writes it to Firebase. These locations disappear on page refresh. The `isPending: true` flag suggests admin approval was intended but not implemented.
-
-**6. Bundle Size (867 KB)**
-The main JS chunk is 867 KB (245 KB gzip). Primary contributors are likely Recharts, the full Radix UI suite, and Leaflet. Code-splitting the admin page and detail modal via `React.lazy()` would help significantly since most users never visit `/admin`.
-
-**7. Lint Errors**
-8 ESLint errors including:
-- `no-explicit-any` in `ratings.ts:21` (Rating timestamp typed as `any`)
-- `no-empty` in `Index.tsx:294,302,309` (empty catch blocks in localStorage calls)
-- `no-empty-object-type` in `textarea.tsx:5`
-- `no-require-imports` in `tailwind.config.ts:114`
-
-### Medium
-
-**8. `useLocations` Doesn't Use React Query**
-The hook (`useLocations.ts`) manually manages `loading`/`error`/`data` state with `useEffect` + `useState`, despite React Query being installed and configured in `App.tsx`. This misses out on caching, deduplication, background refetching, and stale-while-revalidate. The data goes stale after a rating until the user switches cities.
-
-**9. Clustering Algorithm is O(n^2)**
-`getClustersForZoom()` in `MapView.tsx:62` uses a nested loop comparing every location to every other location. With 1000+ locations (which the SCALING_PLAN.md anticipates), this becomes expensive on every zoom change.
-
-**10. Anonymous User ID is Easily Spoofable**
-`userId.ts:17` generates IDs stored in localStorage. A user can clear localStorage to get a new ID and re-rate locations, bypassing the duplicate rating check. The `submitRating` duplicate check queries by this client-generated ID.
-
-**11. Hardcoded Age Groups**
-Age groups are hardcoded in multiple places: `ratings.ts:82-87`, `overpassImport.ts:200-219`, `useLocations.ts:50-71`, and `mockData.ts`. Changing or adding an age group requires edits in 4+ files.
-
-**12. Console Logging in Production**
-Emoji-prefixed `console.log` statements throughout the codebase (`ratings.ts`, `useLocations.ts`, `overpassImport.ts`, `Index.tsx`). These should be removed or gated behind a debug flag for production.
-
-### Low
-
-**13. `onMapClick` Handler Has a Stale Closure Risk**
-In `MapView.tsx:164`, the `onMapClick` callback is captured in the initial `useEffect` (which runs once due to `[]` deps). If the parent re-renders with a new `onMapClick`, the map still fires the old one. This is partially mitigated by `useCallback` in the parent, but the `filteredLocations` dependency means it recreates on data changes.
-
-**14. Import Runs Sequentially**
-`importLocationsToFirebase` in `overpassImport.ts:149` processes locations one at a time with a `for` loop and individual `locationExists` checks. Batched writes and parallel existence checks would improve import speed.
-
-**15. Location Table Has No Pagination**
-`Admin.tsx:236` hard-caps at 50 locations with `locations.slice(0, 50)`. No pagination, sorting, or filtering controls exist.
+**Gaps:** Cluster popup click-handler relies on fragile DOM index matching (`locationDivs[idx]`). No loading state for tile layers.
 
 ---
 
-## Architecture Recommendations
+### 2. Rating System - 9/10
 
-1. **Add Firestore security rules** - This is the most urgent security need. Restrict writes to authenticated users, prevent direct location document modification, and scope admin operations.
+| Aspect | Status | Notes |
+|--------|--------|-------|
+| Emoji+word pair selection | Working | 1-3 pairs from 6 categories |
+| Age group gate | Working | Persisted to localStorage |
+| Firebase persistence | Working | Writes to `locations/{id}/ratings` subcollection |
+| Duplicate prevention | Working | Queries by userId, updates existing doc |
+| Input validation | Working | Whitelist of valid emoji:word pairs, age group enum check |
 
-2. **Move aggregation to a Cloud Function** - A Firestore `onWrite` trigger on the ratings subcollection eliminates race conditions and client-side cost.
+**Strengths:** Clean UX flow -- tap to rate, pick emojis, pick words, submit. Predefined suggestion buttons prevent free-text abuse. Server-side (Firestore rules) and client-side validation are aligned.
 
-3. **Write tests for core logic** - At minimum: `aggregateRatings`, divergence calculation, `mapCategory`, and `getUserId`. These are pure or near-pure functions that are straightforward to test.
+**Gaps:** Anonymous userId is client-generated (spoofable via localStorage). No server-side rate limiting.
 
-4. **Code-split the admin route** - `React.lazy(() => import('./pages/Admin'))` immediately cuts the bundle for regular users.
+---
 
-5. **Use React Query in `useLocations`** - Replace the manual `useEffect` with `useQuery` to get caching, refetching after mutations, and loading states for free.
+### 3. Aggregation Algorithm - 9/10
+
+| Aspect | Status | Notes |
+|--------|--------|-------|
+| Per-age-group top pairs | Working | Counts frequency, sorts, takes top 10 |
+| Overall dominant pair | Working | Aggregates across all age groups |
+| Divergence score | Working | `(uniqueDominants - 1) / (activeGroups - 1)` |
+| Divergence flagging | Working | Flags when score >= 0.5 and 2+ active groups |
+| Minimum threshold | Working | 5 ratings per group before counting for divergence |
+| Test coverage | 11 tests | Covers edge cases: empty, single, multi-pair, partial divergence |
+
+**Strengths:** Divergence formula is elegant -- normalizes unique dominants against group count. The 5-rating minimum prevents noise from small samples.
+
+**Gaps:** Client-side aggregation re-fetches all ratings on every submission. At scale (1000+ ratings/location) this will be slow. Cloud Functions would be more efficient.
+
+---
+
+### 4. Location Creation - 8/10
+
+| Aspect | Status | Notes |
+|--------|--------|-------|
+| Modal UI | Working | Clean form with name, category, address, hours, description |
+| Firebase persistence | Working | `addDoc` with `serverTimestamp` |
+| Input validation | Working | Length limits matching Firestore rules |
+| Coordinate validation | Working | Bounds check (-90..90, -180..180) |
+| Category selection | Working | Constrained to 10 predefined categories |
+
+**Strengths:** Locations persist to Firebase immediately with the real Firestore doc ID, so ratings work seamlessly after creation.
+
+**Gaps:** No geocoding/reverse-geocoding to auto-fill address from coordinates. `isPending` field is set but no moderation workflow exists.
+
+---
+
+### 5. Search - 7/10
+
+| Aspect | Status | Notes |
+|--------|--------|-------|
+| Text search | Working | Filters by name, category, address, neighborhood |
+| Recent searches | Working | Persisted to localStorage (max 1) |
+| Top suggestions | Working | Sorted by totalRatings |
+| Click-outside dismiss | Working | Uses mousedown event listener |
+
+**Strengths:** Responsive dropdown with clear visual hierarchy (recent vs. suggested).
+
+**Gaps:** Search is client-side only -- filters the already-fetched location array. No fuzzy matching. `MAX_RECENT = 1` is very low.
+
+---
+
+### 6. Admin Dashboard - 5/10
+
+| Aspect | Status | Notes |
+|--------|--------|-------|
+| Password auth | Working | But client-side only -- bypassable via DevTools |
+| Analytics tab | Working | Total locations, ratings, avg per location, top 10 |
+| Locations table | Working | Shows first 50 with name, category, city, ratings |
+| Import tool | Working | OSM/Overpass integration |
+| Code splitting | Working | Lazy-loaded via `React.lazy()`, separate 19KB chunk |
+
+**Strengths:** Code-split properly so admin code doesn't burden regular users. Analytics give a quick pulse on the dataset.
+
+**Weaknesses:** Auth is purely cosmetic -- `sessionStorage.setItem("admin_auth", "true")` bypasses it. No pagination beyond first 50 locations. No CRUD operations (can't edit/delete locations). Password is embedded in the client bundle via `VITE_ADMIN_PASSWORD`.
+
+---
+
+### 7. OSM Import - 7/10
+
+| Aspect | Status | Notes |
+|--------|--------|-------|
+| Overpass API query | Working | Restaurants, cafes, bars, parks, gyms |
+| Duplicate detection | Working | Checks by name + city before importing |
+| Progress callback | Working | Reports current/total to UI |
+| Radius cap | Working | Clamped to 100m-10km |
+| Batch delay | Working | 500ms pause every 10 records |
+
+**Strengths:** Good category mapping from OSM tags. Geohash generation for future geo-queries. Duplicate check prevents re-imports.
+
+**Gaps:** Duplicate check is by exact name + city (no fuzzy match). Way/relation parks only get center coordinates, not boundaries.
+
+---
+
+### 8. Security - 7/10
+
+| Aspect | Status | Notes |
+|--------|--------|-------|
+| Firestore rules | Implemented | Category whitelist, coordinate bounds, length limits |
+| XSS prevention | Fixed | `escapeHtml()` on all user content in map popups |
+| Input validation | Implemented | Client + server-side alignment |
+| Rating pair whitelist | Implemented | Only predefined emoji+word combos accepted |
+| Aggregation update guard | Implemented | Cannot change name/category/city/coordinates via update |
+| Admin auth | Weak | Client-side password check, no real server auth |
+| User identity | Weak | Anonymous localStorage IDs, spoofable |
+
+**Strengths:** Firestore rules are well-structured with layered validation. XSS is mitigated in the most critical injection point (Leaflet popups). Rating input is properly whitelisted.
+
+**Weaknesses:** No Firebase Authentication integration. Admin dashboard auth is purely cosmetic. No rate limiting at the Firestore or application level.
+
+---
+
+### 9. Data Model - 8/10
+
+| Aspect | Status | Notes |
+|--------|--------|-------|
+| Location schema | Solid | All needed fields present |
+| Rating subcollection | Solid | Clean parent-child relationship |
+| Type definitions | Good | TypeScript interfaces for Location, Rating, AgeGroupData, EmojiWord |
+| Geohash support | Partial | Generated on import, not used for queries yet |
+
+**Strengths:** The `ratingsByAgeGroup` denormalization pattern is efficient for reads -- no need to query subcollections for display.
+
+**Gaps:** `coordinates` uses `{lat, lng}` on user-created locations but top-level `lat`/`lng` fields on OSM imports -- inconsistent schema.
+
+---
+
+### 10. Build & Testing - 7/10
+
+| Aspect | Status | Notes |
+|--------|--------|-------|
+| Vite build | Working | Production output ~848KB main + 19KB admin chunk |
+| TypeScript | Working | But strict mode disabled |
+| Vitest setup | Working | jsdom environment, React testing library |
+| Test coverage | Partial | 11 tests for aggregation logic, no component tests |
+| Code splitting | Working | Admin page lazy-loaded |
+
+**Strengths:** Vitest configuration is solid. Aggregation tests cover all edge cases thoroughly.
+
+**Gaps:** No component/integration tests. Main bundle is 848KB (above the 500KB warning threshold). TypeScript strict mode is off (`noImplicitAny: false`, `strictNullChecks: false`).
 
 ---
 
 ## Summary Scorecard
 
-| Category | Score | Notes |
-|----------|-------|-------|
-| **Functionality** | 7/10 | Core rating flow works. User-created locations don't persist. Signup is a stub. |
-| **Code Quality** | 6/10 | Clean structure, but lint errors, `any` types, no tests, console logging. |
-| **Security** | 4/10 | Client-side admin auth, no visible Firestore rules, spoofable user IDs. |
-| **Performance** | 6/10 | Oversized bundle, O(n^2) clustering, client-side aggregation. Works fine at current scale. |
-| **Scalability** | 5/10 | Loads all locations per city, client-side aggregation, sequential imports. Scaling plan exists but isn't implemented. |
-| **Testing** | 1/10 | Infrastructure configured, zero tests written. |
-| **UX/Design** | 8/10 | Polished UI, good use of shadcn/ui, responsive layout, clear user flows. |
-| **Overall** | 5.5/10 | Solid prototype with a strong product concept. Needs security hardening, tests, and server-side aggregation before production use. |
+| Feature | Rating | Priority Fix |
+|---------|--------|-------------|
+| Map & Display | 8/10 | -- |
+| Rating System | 9/10 | -- |
+| Aggregation | 9/10 | Move to Cloud Functions at scale |
+| Location Creation | 8/10 | Add moderation workflow |
+| Search | 7/10 | Add fuzzy matching |
+| Admin Dashboard | 5/10 | Replace with real server-side auth |
+| OSM Import | 7/10 | Add fuzzy duplicate detection |
+| Security | 7/10 | Add Firebase Auth, server-side admin |
+| Data Model | 8/10 | Normalize coordinate schema |
+| Build & Testing | 7/10 | Enable strict TS, add component tests |
+
+**Overall: 7.5/10** -- A well-architected frontend with solid rating mechanics. The main remaining gaps are server-side authentication and scaling the aggregation pipeline.
