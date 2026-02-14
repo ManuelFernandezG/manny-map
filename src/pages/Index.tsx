@@ -128,6 +128,10 @@ const Index = () => {
     description: string;
   }) => {
     if (!createCoords) return;
+    if (createCoords.lat < -90 || createCoords.lat > 90 || createCoords.lng < -180 || createCoords.lng > 180) {
+      toast.error("Invalid coordinates.");
+      return;
+    }
 
     const locationData = {
       name: data.name,

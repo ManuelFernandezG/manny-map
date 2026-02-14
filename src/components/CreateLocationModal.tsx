@@ -17,8 +17,15 @@ const CreateLocationModal = ({ lat, lng, onSubmit, onClose }: CreateLocationModa
   const [description, setDescription] = useState("");
 
   const handleSubmit = () => {
-    if (!name.trim()) return;
-    onSubmit({ name: name.trim(), category, address: address.trim(), hours: hours.trim(), description: description.trim() });
+    const trimmedName = name.trim().slice(0, 200);
+    if (!trimmedName) return;
+    onSubmit({
+      name: trimmedName,
+      category,
+      address: address.trim().slice(0, 500),
+      hours: hours.trim().slice(0, 200),
+      description: description.trim().slice(0, 1000),
+    });
   };
 
   return (
