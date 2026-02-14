@@ -11,8 +11,18 @@ import {
 } from 'firebase/firestore';
 import { db } from './firebase';
 import type { Location, AgeGroupData, EmojiWord } from '@/data/mockData';
-import { AGE_GROUPS } from '@/data/mockData';
+import { AGE_GROUPS, EMOJI_CATEGORIES } from '@/data/mockData';
 import { getUserId } from './userId';
+
+// Build a set of all valid emoji+word combinations from the predefined categories
+const VALID_PAIRS = new Set<string>();
+for (const emojis of Object.values(EMOJI_CATEGORIES)) {
+  for (const { emoji, suggestions } of emojis) {
+    for (const word of suggestions) {
+      VALID_PAIRS.add(`${emoji}:${word}`);
+    }
+  }
+}
 
 export interface Rating {
   userId: string;
@@ -29,6 +39,19 @@ export async function submitRating(
   emojiWords: { emoji: string; word: string }[],
   ageGroup: string
 ): Promise<void> {
+  // Validate pairs against allowed emoji+word combinations
+  if (emojiWords.length < 1 || emojiWords.length > 3) {
+    throw new Error('Must provide 1-3 emoji-word pairs');
+  }
+  for (const pair of emojiWords) {
+    if (!VALID_PAIRS.has(`${pair.emoji}:${pair.word}`)) {
+      throw new Error(`Invalid emoji-word pair: ${pair.emoji} ${pair.word}`);
+    }
+  }
+  if (!(AGE_GROUPS as readonly string[]).includes(ageGroup)) {
+    throw new Error(`Invalid age group: ${ageGroup}`);
+  }
+
   const userId = getUserId();
 
   // Check if user already rated this location

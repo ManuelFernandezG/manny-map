@@ -1,0 +1,93 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Locations collection
+    match /locations/{locationId} {
+      // Anyone can read locations
+      allow read: if true;
+
+      // Only allow creation with required fields and validated data
+      allow create: if isValidLocation(request.resource.data);
+
+      // Only allow updates to aggregation fields (from rating submissions)
+      allow update: if isAggregationUpdate(request.resource.data, resource.data);
+
+      // No deletes from clients
+      allow delete: if false;
+
+      // Ratings subcollection
+      match /ratings/{ratingId} {
+        // Anyone can read ratings
+        allow read: if true;
+
+        // Allow creating a rating with a valid userId and structure
+        allow create: if isValidRating(request.resource.data);
+
+        // Allow updating only your own rating (userId must not change)
+        allow update: if request.resource.data.userId == resource.data.userId
+                       && isValidRating(request.resource.data);
+
+        // No deletes from clients
+        allow delete: if false;
+      }
+    }
+
+    // Helper: validate location document structure
+    function isValidLocation(data) {
+      return data.keys().hasAll(['name', 'category', 'city', 'coordinates'])
+        && data.name is string
+        && data.name.size() > 0
+        && data.name.size() <= 200
+        && data.category is string
+        && data.category.size() > 0
+        && data.category.size() <= 50
+        && data.category in [
+          'Restaurant', 'Nightclub', 'Park', 'Gym', 'Run Route',
+          'Event', 'Pop-up', 'Bar', 'Cafe', 'Other'
+        ]
+        && data.city is string
+        && data.city.size() > 0
+        && data.city.size() <= 100
+        && data.coordinates is map
+        && data.coordinates.keys().hasAll(['lat', 'lng'])
+        && data.coordinates.lat is number
+        && data.coordinates.lng is number
+        && data.coordinates.lat >= -90
+        && data.coordinates.lat <= 90
+        && data.coordinates.lng >= -180
+        && data.coordinates.lng <= 180
+        // Optional string fields must not exceed limits if present
+        && (!('address' in data.keys()) || (data.address is string && data.address.size() <= 500))
+        && (!('description' in data.keys()) || (data.description is string && data.description.size() <= 1000))
+        && (!('hours' in data.keys()) || (data.hours is string && data.hours.size() <= 200));
+    }
+
+    // Helper: only allow updating aggregation fields, not core location data
+    function isAggregationUpdate(newData, oldData) {
+      return newData.name == oldData.name
+        && newData.category == oldData.category
+        && newData.city == oldData.city
+        && newData.coordinates == oldData.coordinates;
+    }
+
+    // Helper: validate rating document structure
+    function isValidRating(data) {
+      return data.keys().hasAll(['userId', 'ageGroup', 'pairs', 'timestamp'])
+        && data.userId is string
+        && data.userId.size() > 0
+        && data.userId.size() <= 100
+        && data.ageGroup is string
+        && data.ageGroup in ['18-22', '23-28', '29-35', '36+']
+        && data.pairs is list
+        && data.pairs.size() >= 1
+        && data.pairs.size() <= 3;
+    }
+
+    // Deny all other collections
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

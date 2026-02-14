@@ -43,7 +43,11 @@ const CATEGORY_MAPPING: Record<string, string> = {
 /**
  * Build Overpass query for a city
  */
+const MAX_RADIUS = 10000; // 10km cap
+
 function buildOverpassQuery(city: string, lat: number, lng: number, radius: number = 5000): string {
+  const safeRadius = Math.max(100, Math.min(Math.round(radius), MAX_RADIUS));
+  radius = safeRadius;
   // Query for various amenities and places
   return `
     [out:json][timeout:25];

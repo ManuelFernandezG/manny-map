@@ -11,6 +11,12 @@ interface MapViewProps {
   onMapClick: (lat: number, lng: number) => void;
 }
 
+function escapeHtml(str: string): string {
+  const div = document.createElement("div");
+  div.appendChild(document.createTextNode(str));
+  return div.innerHTML;
+}
+
 function createEmojiIcon(emoji: string, size: number = 40) {
   return L.divIcon({
     className: "emoji-marker",
@@ -215,8 +221,8 @@ const MapView = ({ locations, center, zoom, onLocationClick, onMapClick }: MapVi
         })
           .addTo(mapRef.current!)
           .bindPopup(
-            `<div style="font-family: Outfit, sans-serif; font-weight: 600; color: #000;">${loc.name}</div>
-             <div style="font-size: 13px; color: #666;">${loc.dominantEmoji} ${loc.dominantWord} · ${loc.totalRatings} ratings</div>`
+            `<div style="font-family: Outfit, sans-serif; font-weight: 600; color: #000;">${escapeHtml(loc.name)}</div>
+             <div style="font-size: 13px; color: #666;">${escapeHtml(loc.dominantEmoji)} ${escapeHtml(loc.dominantWord)} · ${loc.totalRatings} ratings</div>`
           )
           .on("click", () => onLocationClick(loc));
       } else {
@@ -234,8 +240,8 @@ const MapView = ({ locations, center, zoom, onLocationClick, onMapClick }: MapVi
                   .map(
                     (loc) =>
                       `<div style="padding: 4px; border-bottom: 1px solid #eee; cursor: pointer; font-size: 12px;">
-                        <strong>${loc.name}</strong><br/>
-                        <span style="color: #999;">${loc.category}</span>
+                        <strong>${escapeHtml(loc.name)}</strong><br/>
+                        <span style="color: #999;">${escapeHtml(loc.category)}</span>
                       </div>`
                   )
                   .join("")}
