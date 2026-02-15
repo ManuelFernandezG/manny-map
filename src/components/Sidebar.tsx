@@ -5,7 +5,6 @@ const NAV_ITEMS = [
   { num: "02", label: "Ratings", path: "/dashboard" },
   { num: "03", label: "Profile", path: "/profile" },
   { num: "04", label: "Admin", path: "/admin" },
-  { num: "05", label: "Settings", path: "#" },
 ];
 
 const Sidebar = () => {
@@ -38,15 +37,6 @@ const Sidebar = () => {
             );
           })}
         </nav>
-      </div>
-      <div className="flex items-center gap-3.5">
-        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#2D5F2D]">
-          <span className="font-['Inter'] text-[13px] font-medium text-[#8FBF8F]">M</span>
-        </div>
-        <div className="flex flex-col gap-0.5">
-          <span className="font-['Inter'] text-sm font-medium text-[#C5DFC5]">Manny</span>
-          <span className="font-['Inter'] text-xs text-[#7A8A7A]">manny@map.co</span>
-        </div>
       </div>
     </aside>
   );

@@ -1,12 +1,13 @@
 import { useState, useEffect } from "react";
-import { Lock, MapPin, TrendingUp, Users, Upload, Pencil, Check, X, MessageSquare, Plus } from "lucide-react";
+import { Lock, MapPin, TrendingUp, Users, Pencil, Check, X, MessageSquare, Plus } from "lucide-react";
 import { collection, getDocs, updateDoc, doc, deleteDoc } from "firebase/firestore/lite";
 import { db } from "@/lib/firebase";
 import { CATEGORIES } from "@/data/mockData";
 import type { Location } from "@/data/mockData";
 import { toast } from "sonner";
-import ImportTool from "@/components/ImportTool";
 import ReviewImportModal from "@/components/ReviewImportModal";
+import Sidebar from "@/components/Sidebar";
+import BottomNav from "@/components/BottomNav";
 
 interface Suggestion {
   id: string;
@@ -21,10 +22,16 @@ interface Suggestion {
 
 const ADMIN_PASSWORD = import.meta.env.VITE_ADMIN_PASSWORD || "admin123";
 
+const TABS = [
+  { id: "analytics", label: "Analytics", icon: TrendingUp },
+  { id: "locations", label: "Locations", icon: MapPin },
+  { id: "suggestions", label: "Suggestions", icon: MessageSquare },
+] as const;
+
 const Admin = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [password, setPassword] = useState("");
-  const [activeTab, setActiveTab] = useState<"analytics" | "locations" | "import" | "suggestions">("analytics");
+  const [activeTab, setActiveTab] = useState<"analytics" | "locations" | "suggestions">("analytics");
   const [locations, setLocations] = useState<Location[]>([]);
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
   const [stats, setStats] = useState({
@@ -160,180 +167,197 @@ const Admin = () => {
 
   if (!isAuthenticated) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center p-4">
-        <div className="w-full max-w-md">
-          <div className="bg-card border border-border rounded-2xl p-8 card-shadow">
-            <div className="flex items-center justify-center mb-6">
-              <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center">
-                <Lock className="w-8 h-8 text-primary" />
+      <div className="flex h-screen w-full">
+        <Sidebar />
+        <div className="flex-1 flex items-center justify-center bg-[#F5F5F5] p-4">
+          <div className="w-full max-w-md">
+            <div className="bg-white p-8" style={{ boxShadow: "0 1px 3px rgba(0,0,0,0.08)" }}>
+              <div className="flex items-center justify-center mb-6">
+                <div className="w-16 h-16 rounded-full bg-[#2D5F2D]/10 flex items-center justify-center">
+                  <Lock className="w-8 h-8 text-[#2D5F2D]" />
+                </div>
               </div>
+              <h1 className="font-['Instrument_Serif'] text-3xl italic text-center text-black mb-2">
+                Admin Dashboard
+              </h1>
+              <p className="font-['Inter'] text-sm text-[#888888] text-center mb-6">
+                Enter password to access admin controls
+              </p>
+              <form onSubmit={handleLogin} className="space-y-4">
+                <input
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="Password"
+                  className="w-full px-4 py-3 bg-[#F5F5F5] border border-[#E0E0E0] text-black font-['Inter'] text-sm placeholder:text-[#AAAAAA] focus:outline-none focus:border-[#2D5F2D] transition-colors"
+                  autoFocus
+                />
+                <button
+                  type="submit"
+                  className="w-full py-3 bg-[#2D5F2D] text-white font-['Inter'] text-sm font-medium hover:opacity-90 transition-opacity"
+                >
+                  Login
+                </button>
+              </form>
             </div>
-            <h1 className="text-2xl font-display font-bold text-center text-foreground mb-2">
-              Admin Dashboard
-            </h1>
-            <p className="text-sm text-muted-foreground text-center mb-6">
-              Enter password to access admin controls
-            </p>
-            <form onSubmit={handleLogin} className="space-y-4">
-              <input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="Password"
-                className="w-full px-4 py-3 rounded-lg bg-surface border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary transition-colors"
-                autoFocus
-              />
-              <button
-                type="submit"
-                className="w-full py-3 rounded-lg bg-primary text-primary-foreground font-display font-bold hover:opacity-90 transition-opacity"
-              >
-                Login
-              </button>
-            </form>
           </div>
         </div>
+        <BottomNav />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Header */}
-      <div className="bg-card border-b border-border">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-display font-bold text-foreground">Admin Dashboard</h1>
-              <p className="text-sm text-muted-foreground mt-1">Manage locations, imports, and analytics</p>
+    <div className="flex h-screen w-full">
+      <Sidebar />
+
+      <main className="flex-1 overflow-y-auto bg-[#F5F5F5] p-6 pb-20 md:p-12 md:pb-12">
+        <div className="flex flex-col gap-8 md:gap-14">
+          {/* Page Header */}
+          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+            <div className="flex flex-col gap-2">
+              <h1 className="font-['Instrument_Serif'] text-4xl md:text-[64px] italic leading-none text-black">
+                Admin
+              </h1>
+              <p className="font-['Inter'] text-sm md:text-base text-[#666666]">
+                Manage locations, imports, and analytics
+              </p>
             </div>
             <button
               onClick={() => {
                 sessionStorage.removeItem("admin_auth");
                 setIsAuthenticated(false);
               }}
-              className="px-4 py-2 rounded-lg bg-surface text-foreground hover:bg-surface-hover transition-colors text-sm font-medium"
+              className="flex items-center gap-2.5 bg-white px-4 py-3 font-['Inter'] text-sm text-[#333333] hover:bg-[#F0F0F0] transition-colors"
             >
               Logout
             </button>
           </div>
-        </div>
-      </div>
 
-      {/* Tabs */}
-      <div className="bg-card border-b border-border">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex gap-6">
-            {[
-              { id: "analytics", label: "Analytics", icon: TrendingUp },
-              { id: "locations", label: "Locations", icon: MapPin },
-              { id: "import", label: "Import", icon: Upload },
-              { id: "suggestions", label: `Suggestions${suggestions.length ? ` (${suggestions.length})` : ""}`, icon: MessageSquare },
-            ].map(tab => (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id as any)}
-                className={`flex items-center gap-2 px-4 py-4 border-b-2 transition-colors ${
-                  activeTab === tab.id
-                    ? "border-primary text-primary font-semibold"
-                    : "border-transparent text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                <tab.icon className="w-5 h-5" />
-                <span className="font-display">{tab.label}</span>
-              </button>
-            ))}
+          {/* Tabs */}
+          <div className="flex gap-1 bg-white p-1.5 overflow-x-auto">
+            {TABS.map(tab => {
+              const isActive = activeTab === tab.id;
+              const label = tab.id === "suggestions" && suggestions.length
+                ? `${tab.label} (${suggestions.length})`
+                : tab.label;
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id as any)}
+                  className={`flex items-center gap-2 px-5 py-2.5 font-['Inter'] text-sm transition-colors whitespace-nowrap ${
+                    isActive
+                      ? "bg-[#2D5F2D] text-white font-medium"
+                      : "text-[#666666] hover:text-black"
+                  }`}
+                >
+                  <tab.icon className="w-4 h-4" />
+                  {label}
+                </button>
+              );
+            })}
           </div>
-        </div>
-      </div>
 
-      {/* Content */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {activeTab === "analytics" && (
-          <div className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <div className="bg-card border border-border rounded-xl p-6">
-                <div className="flex items-center gap-3 mb-2">
-                  <MapPin className="w-5 h-5 text-primary" />
-                  <p className="text-sm font-medium text-muted-foreground">Total Locations</p>
-                </div>
-                <p className="text-3xl font-display font-bold text-foreground">{stats.totalLocations}</p>
-              </div>
-              <div className="bg-card border border-border rounded-xl p-6">
-                <div className="flex items-center gap-3 mb-2">
-                  <Users className="w-5 h-5 text-primary" />
-                  <p className="text-sm font-medium text-muted-foreground">Total Ratings</p>
-                </div>
-                <p className="text-3xl font-display font-bold text-foreground">{stats.totalRatings}</p>
-              </div>
-              <div className="bg-card border border-border rounded-xl p-6">
-                <div className="flex items-center gap-3 mb-2">
-                  <TrendingUp className="w-5 h-5 text-primary" />
-                  <p className="text-sm font-medium text-muted-foreground">Avg Ratings/Location</p>
-                </div>
-                <p className="text-3xl font-display font-bold text-foreground">
-                  {stats.avgRatingsPerLocation.toFixed(1)}
-                </p>
-              </div>
-            </div>
-
-            <div className="bg-card border border-border rounded-xl p-6">
-              <h2 className="text-xl font-display font-bold text-foreground mb-4">Top Rated Locations</h2>
-              <div className="space-y-3">
-                {stats.topLocations.map((loc, idx) => (
-                  <div key={loc.id} className="flex items-center justify-between py-3 border-b border-border last:border-0">
-                    <div className="flex items-center gap-3">
-                      <span className="text-2xl font-display font-bold text-muted-foreground">#{idx + 1}</span>
-                      <div>
-                        <p className="font-display font-semibold text-foreground">{loc.name}</p>
-                        <p className="text-sm text-muted-foreground">{loc.category} · {loc.city}</p>
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-lg font-display font-bold text-foreground">
-                        {loc.dominantEmoji} {loc.dominantWord}
-                      </p>
-                      <p className="text-sm text-muted-foreground">{loc.totalRatings} ratings</p>
-                    </div>
+          {/* Analytics Tab */}
+          {activeTab === "analytics" && (
+            <div className="flex flex-col gap-6">
+              {/* Metric Cards */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
+                <div className="flex flex-col gap-3 bg-white p-5 md:p-7">
+                  <div className="flex items-center gap-2.5">
+                    <MapPin className="w-4 h-4 text-[#888888]" />
+                    <span className="font-['Inter'] text-[13px] text-[#888888]">Total Locations</span>
                   </div>
-                ))}
+                  <span className="font-['Instrument_Serif'] text-3xl md:text-[44px] italic leading-none text-black">
+                    {stats.totalLocations}
+                  </span>
+                </div>
+                <div className="flex flex-col gap-3 bg-white p-5 md:p-7">
+                  <div className="flex items-center gap-2.5">
+                    <Users className="w-4 h-4 text-[#888888]" />
+                    <span className="font-['Inter'] text-[13px] text-[#888888]">Total Ratings</span>
+                  </div>
+                  <span className="font-['Instrument_Serif'] text-3xl md:text-[44px] italic leading-none text-black">
+                    {stats.totalRatings}
+                  </span>
+                </div>
+                <div className="flex flex-col gap-3 bg-white p-5 md:p-7">
+                  <div className="flex items-center gap-2.5">
+                    <TrendingUp className="w-4 h-4 text-[#888888]" />
+                    <span className="font-['Inter'] text-[13px] text-[#888888]">Avg Ratings / Location</span>
+                  </div>
+                  <span className="font-['Instrument_Serif'] text-3xl md:text-[44px] italic leading-none text-black">
+                    {stats.avgRatingsPerLocation.toFixed(1)}
+                  </span>
+                </div>
+              </div>
+
+              {/* Top Rated Locations */}
+              <div className="flex flex-col gap-6 bg-white p-5 md:p-7 overflow-x-auto">
+                <h2 className="font-['Instrument_Serif'] text-2xl italic text-black">Top Rated Locations</h2>
+                <table className="w-full min-w-[500px]">
+                  <thead>
+                    <tr className="border-b border-[#F0F0F0]">
+                      <th className="py-3.5 text-left font-['Inter'] text-xs font-medium text-black">#</th>
+                      <th className="py-3.5 text-left font-['Inter'] text-xs font-medium text-black">Location</th>
+                      <th className="py-3.5 text-left font-['Inter'] text-xs font-medium text-black">Category</th>
+                      <th className="py-3.5 text-left font-['Inter'] text-xs font-medium text-black">City</th>
+                      <th className="py-3.5 text-left font-['Inter'] text-xs font-medium text-black">Ratings</th>
+                      <th className="py-3.5 text-left font-['Inter'] text-xs font-medium text-black">Dominant</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {stats.topLocations.map((loc, idx) => (
+                      <tr key={loc.id} className={idx < stats.topLocations.length - 1 ? "border-b border-[#F0F0F0]" : ""}>
+                        <td className="py-4 font-['Inter'] text-sm text-[#888888]">{idx + 1}</td>
+                        <td className="py-4 font-['Inter'] text-sm font-medium text-black">{loc.name}</td>
+                        <td className="py-4 font-['Inter'] text-sm text-[#666666]">{loc.category}</td>
+                        <td className="py-4 font-['Inter'] text-sm text-[#666666]">{loc.city}</td>
+                        <td className="py-4 font-['Inter'] text-sm text-black">{loc.totalRatings}</td>
+                        <td className="py-4 font-['Inter'] text-sm text-black">
+                          {loc.dominantEmoji} {loc.dominantWord}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             </div>
-          </div>
-        )}
+          )}
 
-        {activeTab === "locations" && (
-          <div className="bg-card border border-border rounded-xl p-6">
-            <h2 className="text-xl font-display font-bold text-foreground mb-4">All Locations</h2>
-            <div className="overflow-x-auto">
-              <table className="w-full">
+          {/* Locations Tab */}
+          {activeTab === "locations" && (
+            <div className="flex flex-col gap-6 bg-white p-5 md:p-7 overflow-x-auto">
+              <h2 className="font-['Instrument_Serif'] text-2xl italic text-black">All Locations</h2>
+              <table className="w-full min-w-[600px]">
                 <thead>
-                  <tr className="border-b border-border">
-                    <th className="text-left py-3 px-4 text-sm font-semibold text-muted-foreground">Name</th>
-                    <th className="text-left py-3 px-4 text-sm font-semibold text-muted-foreground">Category</th>
-                    <th className="text-left py-3 px-4 text-sm font-semibold text-muted-foreground">City</th>
-                    <th className="text-left py-3 px-4 text-sm font-semibold text-muted-foreground">Ratings</th>
-                    <th className="text-left py-3 px-4 text-sm font-semibold text-muted-foreground">Dominant</th>
-                    <th className="text-left py-3 px-4 text-sm font-semibold text-muted-foreground">Actions</th>
+                  <tr className="border-b border-[#F0F0F0]">
+                    <th className="py-3.5 text-left font-['Inter'] text-xs font-medium text-black">Name</th>
+                    <th className="py-3.5 text-left font-['Inter'] text-xs font-medium text-black">Category</th>
+                    <th className="py-3.5 text-left font-['Inter'] text-xs font-medium text-black">City</th>
+                    <th className="py-3.5 text-left font-['Inter'] text-xs font-medium text-black">Ratings</th>
+                    <th className="py-3.5 text-left font-['Inter'] text-xs font-medium text-black">Dominant</th>
+                    <th className="py-3.5 text-left font-['Inter'] text-xs font-medium text-black">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {locations.map(loc => (
-                    <tr key={loc.id} className="border-b border-border hover:bg-surface transition-colors">
-                      <td className="py-3 px-4 text-sm font-medium text-foreground">
+                  {locations.map((loc, i) => (
+                    <tr key={loc.id} className={`${i < locations.length - 1 ? "border-b border-[#F0F0F0]" : ""} hover:bg-[#FAFAFA] transition-colors`}>
+                      <td className="py-4 pr-4 font-['Inter'] text-sm font-medium text-black">
                         {editingId === loc.id ? (
                           <input
                             value={editName}
                             onChange={(e) => setEditName(e.target.value)}
-                            className="w-full px-2 py-1 rounded bg-background border border-border text-foreground text-sm focus:outline-none focus:border-primary"
+                            className="w-full px-2 py-1 bg-[#F5F5F5] border border-[#E0E0E0] text-black font-['Inter'] text-sm focus:outline-none focus:border-[#2D5F2D]"
                           />
                         ) : loc.name}
                       </td>
-                      <td className="py-3 px-4 text-sm text-muted-foreground">
+                      <td className="py-4 pr-4 font-['Inter'] text-sm text-[#666666]">
                         {editingId === loc.id ? (
                           <select
                             value={editCategory}
                             onChange={(e) => setEditCategory(e.target.value)}
-                            className="px-2 py-1 rounded bg-background border border-border text-foreground text-sm"
+                            className="px-2 py-1 bg-[#F5F5F5] border border-[#E0E0E0] text-black font-['Inter'] text-sm"
                           >
                             {CATEGORIES.map((c) => (
                               <option key={c} value={c}>{c}</option>
@@ -341,26 +365,26 @@ const Admin = () => {
                           </select>
                         ) : loc.category}
                       </td>
-                      <td className="py-3 px-4 text-sm text-muted-foreground">{loc.city}</td>
-                      <td className="py-3 px-4 text-sm text-muted-foreground">{loc.totalRatings}</td>
-                      <td className="py-3 px-4 text-sm">
+                      <td className="py-4 pr-4 font-['Inter'] text-sm text-[#666666]">{loc.city}</td>
+                      <td className="py-4 pr-4 font-['Inter'] text-sm text-black">{loc.totalRatings}</td>
+                      <td className="py-4 pr-4 font-['Inter'] text-sm text-black">
                         {loc.dominantEmoji} {loc.dominantWord}
                       </td>
-                      <td className="py-3 px-4 text-sm">
+                      <td className="py-4 font-['Inter'] text-sm">
                         <div className="flex items-center gap-1.5">
                           {editingId === loc.id ? (
                             <>
                               <button
                                 onClick={() => saveEdit(loc.id)}
                                 disabled={saving}
-                                className="p-1.5 rounded bg-primary text-primary-foreground hover:opacity-90 disabled:opacity-50"
+                                className="p-1.5 bg-[#2D5F2D] text-white hover:opacity-90 disabled:opacity-50"
                                 title="Save"
                               >
                                 <Check className="h-3.5 w-3.5" />
                               </button>
                               <button
                                 onClick={cancelEdit}
-                                className="p-1.5 rounded bg-surface hover:bg-surface-hover text-foreground"
+                                className="p-1.5 bg-[#F5F5F5] hover:bg-[#E0E0E0] text-[#333333]"
                                 title="Cancel"
                               >
                                 <X className="h-3.5 w-3.5" />
@@ -370,14 +394,14 @@ const Admin = () => {
                             <>
                               <button
                                 onClick={() => startEdit(loc)}
-                                className="p-1.5 rounded bg-surface hover:bg-surface-hover text-foreground"
+                                className="p-1.5 bg-[#F5F5F5] hover:bg-[#E0E0E0] text-[#333333]"
                                 title="Edit"
                               >
                                 <Pencil className="h-3.5 w-3.5" />
                               </button>
                               <button
                                 onClick={() => setImportLocation(loc)}
-                                className="p-1.5 rounded bg-primary/10 hover:bg-primary/20 text-primary"
+                                className="p-1.5 bg-[#2D5F2D]/10 hover:bg-[#2D5F2D]/20 text-[#2D5F2D]"
                                 title="Import reviews"
                               >
                                 <Plus className="h-3.5 w-3.5" />
@@ -391,66 +415,65 @@ const Admin = () => {
                 </tbody>
               </table>
             </div>
-          </div>
-        )}
+          )}
 
-        {activeTab === "import" && <ImportTool />}
+          {/* Suggestions Tab */}
+          {activeTab === "suggestions" && (
+            <div className="flex flex-col gap-4">
+              <h2 className="font-['Instrument_Serif'] text-2xl italic text-black">User Suggestions</h2>
+              {suggestions.length === 0 ? (
+                <div className="bg-white p-8 text-center">
+                  <MessageSquare className="h-8 w-8 text-[#AAAAAA] mx-auto mb-3" />
+                  <p className="font-['Inter'] text-sm text-[#888888]">No suggestions yet</p>
+                </div>
+              ) : (
+                suggestions.map((sug) => (
+                  <div key={sug.id} className="bg-white p-5">
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="flex-1 min-w-0">
+                        <p className="font-['Inter'] text-sm font-medium text-black">{sug.locationName}</p>
+                        <p className="font-['Inter'] text-xs text-[#AAAAAA] mt-0.5">Location ID: {sug.locationId}</p>
 
-        {activeTab === "suggestions" && (
-          <div className="space-y-4">
-            <h2 className="text-xl font-display font-bold text-foreground">User Suggestions</h2>
-            {suggestions.length === 0 ? (
-              <div className="bg-card border border-border rounded-xl p-8 text-center">
-                <MessageSquare className="h-8 w-8 text-muted-foreground mx-auto mb-3" />
-                <p className="text-muted-foreground">No suggestions yet</p>
-              </div>
-            ) : (
-              suggestions.map((sug) => (
-                <div key={sug.id} className="bg-card border border-border rounded-xl p-5">
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="flex-1 min-w-0">
-                      <p className="font-display font-semibold text-foreground">{sug.locationName}</p>
-                      <p className="text-xs text-muted-foreground mt-0.5">Location ID: {sug.locationId}</p>
-
-                      {sug.suggestedName && (
-                        <div className="mt-2 flex items-center gap-2 text-sm">
-                          <span className="text-muted-foreground">Name →</span>
-                          <span className="font-semibold text-primary">{sug.suggestedName}</span>
-                        </div>
-                      )}
-                      {sug.suggestedCategory && (
-                        <div className="mt-1 flex items-center gap-2 text-sm">
-                          <span className="text-muted-foreground">Category →</span>
-                          <span className="font-semibold text-primary">{sug.suggestedCategory}</span>
-                        </div>
-                      )}
-                      {sug.message && (
-                        <p className="mt-2 text-sm text-secondary-foreground bg-surface rounded-lg px-3 py-2">
-                          "{sug.message}"
-                        </p>
-                      )}
-                    </div>
-                    <div className="flex gap-2 flex-shrink-0">
-                      <button
-                        onClick={() => approveSuggestion(sug)}
-                        className="px-3 py-1.5 rounded-lg bg-primary text-primary-foreground font-display font-semibold text-xs hover:opacity-90"
-                      >
-                        Approve
-                      </button>
-                      <button
-                        onClick={() => dismissSuggestion(sug.id)}
-                        className="px-3 py-1.5 rounded-lg bg-surface hover:bg-surface-hover text-foreground font-display font-semibold text-xs"
-                      >
-                        Dismiss
-                      </button>
+                        {sug.suggestedName && (
+                          <div className="mt-2 flex items-center gap-2 font-['Inter'] text-sm">
+                            <span className="text-[#888888]">Name →</span>
+                            <span className="font-medium text-[#2D5F2D]">{sug.suggestedName}</span>
+                          </div>
+                        )}
+                        {sug.suggestedCategory && (
+                          <div className="mt-1 flex items-center gap-2 font-['Inter'] text-sm">
+                            <span className="text-[#888888]">Category →</span>
+                            <span className="font-medium text-[#2D5F2D]">{sug.suggestedCategory}</span>
+                          </div>
+                        )}
+                        {sug.message && (
+                          <p className="mt-2 font-['Inter'] text-sm text-[#333333] bg-[#F5F5F5] px-3 py-2">
+                            "{sug.message}"
+                          </p>
+                        )}
+                      </div>
+                      <div className="flex gap-2 flex-shrink-0">
+                        <button
+                          onClick={() => approveSuggestion(sug)}
+                          className="px-3 py-1.5 bg-[#2D5F2D] text-white font-['Inter'] text-xs font-medium hover:opacity-90"
+                        >
+                          Approve
+                        </button>
+                        <button
+                          onClick={() => dismissSuggestion(sug.id)}
+                          className="px-3 py-1.5 bg-[#F5F5F5] hover:bg-[#E0E0E0] text-[#333333] font-['Inter'] text-xs font-medium"
+                        >
+                          Dismiss
+                        </button>
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))
-            )}
-          </div>
-        )}
-      </div>
+                ))
+              )}
+            </div>
+          )}
+        </div>
+      </main>
 
       {/* Review import modal */}
       {importLocation && (
@@ -460,6 +483,8 @@ const Admin = () => {
           onImported={loadData}
         />
       )}
+
+      <BottomNav />
     </div>
   );
 };

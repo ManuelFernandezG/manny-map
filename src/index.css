@@ -113,54 +113,15 @@
   }
 }
 
-/* Leaflet overrides for dark theme */
-.leaflet-container {
-  background: hsl(216 28% 7%) !important;
-}
-
-.leaflet-tile-pane {
-  filter: brightness(0.7) contrast(1.2) saturate(0.3) hue-rotate(180deg) invert(1);
-}
-
+/* Leaflet overrides */
 .leaflet-control-zoom a {
-  background: hsl(220 25% 11%) !important;
-  color: hsl(0 0% 96%) !important;
-  border-color: hsl(220 15% 20%) !important;
-}
-
-.leaflet-control-zoom a:hover {
-  background: hsl(220 22% 14%) !important;
+  background: #fff !important;
+  color: #333 !important;
+  border-color: #ddd !important;
 }
 
 .leaflet-control-attribution {
-  background: hsl(220 25% 11% / 0.8) !important;
-  color: hsl(215 15% 55%) !important;
   font-size: 10px !important;
-}
-
-.leaflet-control-attribution a {
-  color: hsl(72 100% 50%) !important;
-}
-
-/* Custom emoji marker — scales with zoom via --emoji-scale CSS variable */
-.emoji-marker {
-  background: none !important;
-  border: none !important;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-}
-
-.emoji-marker > div {
-  transition: transform 0.25s ease;
-  transform: scale(var(--emoji-scale, 1));
-  will-change: transform;
-}
-
-.emoji-marker:hover > div {
-  transform: scale(calc(var(--emoji-scale, 1) * 1.2));
-  filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.5));
 }
 
 /* Scrollbar styling */
