@@ -17,7 +17,6 @@ import type { RatedEntry } from "@/lib/userId";
 
 // Lazy-load heavy components that aren't needed for first paint
 const MapView = lazy(() => import("@/components/MapView"));
-const LocationDrawer = lazy(() => import("@/components/LocationDrawer"));
 const RatedCarousel = lazy(() => import("@/components/RatedCarousel"));
 const CheckinModal = lazy(() => import("@/components/CheckinModal"));
 const ReviewModal = lazy(() => import("@/components/ReviewModal"));
@@ -419,21 +418,6 @@ const Index = () => {
             />
           </Suspense>
         </div>
-      )}
-
-      {/* Location drawer at bottom */}
-      {!loading && (
-        <Suspense fallback={null}>
-          <LocationDrawer
-            locations={visibleLocations}
-            userAgeGroup={userAgeGroup}
-            userGender={userGender}
-            ratedLocationIds={ratedLocationIds}
-            activeCategories={activeCategories}
-            onLocationTap={(loc) => setSelectedLocation(loc)}
-            onAction={handleLocationAction}
-          />
-        </Suspense>
       )}
 
       {/* Modals — each wrapped in Suspense since they're lazy-loaded */}
