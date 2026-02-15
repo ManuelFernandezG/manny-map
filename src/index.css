@@ -93,6 +93,10 @@
 }
 
 /* Leaflet overrides */
+.leaflet-bottom.leaflet-right {
+  bottom: 180px !important;
+}
+
 .leaflet-control-zoom a {
   background: #fff !important;
   color: #333 !important;

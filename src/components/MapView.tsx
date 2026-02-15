@@ -65,11 +65,8 @@ const MapView = ({
 
     L.control.zoom({ position: "bottomright" }).addTo(map);
 
-    const maptilerKey = import.meta.env.VITE_MAPTILER_KEY || "";
-    L.tileLayer(`https://api.maptiler.com/maps/hybrid/{z}/{x}/{y}.jpg?key=${maptilerKey}`, {
-      attribution: '&copy; <a href="https://www.maptiler.com/">MapTiler</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
-      tileSize: 512,
-      zoomOffset: -1,
+    L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", {
+      attribution: '&copy; Esri &mdash; Esri, Maxar, Earthstar Geographics',
     }).addTo(map);
 
     map.on("click", (e: L.LeafletMouseEvent) => {

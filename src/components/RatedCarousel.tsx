@@ -37,7 +37,7 @@ const RatedCarousel = ({
   const categoryClass = CATEGORY_COLORS[loc.category] || CATEGORY_COLORS["Other"];
 
   return (
-    <div className="w-full px-3 sm:px-6">
+    <div className="w-full max-w-md px-3 pointer-events-auto">
       <div className="flex items-center gap-2">
         <button
           onClick={() => onActiveChange(activeIndex - 1)}
