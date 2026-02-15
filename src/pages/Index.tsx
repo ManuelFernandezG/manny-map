@@ -1,6 +1,7 @@
 import { useState, useCallback, useMemo, useEffect, lazy, Suspense } from "react";
-import { Flame, Loader, User } from "lucide-react";
+import { Flame, Loader } from "lucide-react";
 import { useNavigate, useSearchParams } from "react-router-dom";
+import BottomNav from "@/components/BottomNav";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import CitySelector from "@/components/CitySelector";
 import CategoryFilter from "@/components/CategoryFilter";
@@ -375,16 +376,7 @@ const Index = () => {
             <Flame className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
             <span className="font-display font-bold text-foreground text-sm sm:text-lg">Manny Map</span>
           </div>
-          <div className="flex items-center gap-1.5 sm:gap-2">
-            <button
-              onClick={() => navigate("/profile")}
-              className="flex items-center gap-1 sm:gap-2 bg-primary text-primary-foreground rounded-lg px-2 py-1.5 sm:px-3 sm:py-2 font-display font-semibold text-xs sm:text-sm hover:opacity-90 transition-opacity"
-            >
-              <User className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-              Profile
-            </button>
-            <CitySelector selectedCity={city} onCityChange={setCity} />
-          </div>
+          <CitySelector selectedCity={city} onCityChange={setCity} />
         </div>
 
         <div className="flex justify-center">
@@ -414,7 +406,7 @@ const Index = () => {
 
       {/* Rated locations carousel */}
       {!loading && ratedLocations.length > 0 && (
-        <div className="absolute bottom-[160px] left-0 right-0 z-[999] pb-2">
+        <div className="absolute bottom-[216px] left-0 right-0 z-[999] pb-2">
           <Suspense fallback={null}>
             <RatedCarousel
               locations={ratedLocations}
@@ -508,6 +500,8 @@ const Index = () => {
           />
         )}
       </Suspense>
+
+      <BottomNav />
     </div>
   );
 };

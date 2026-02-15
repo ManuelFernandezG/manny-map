@@ -38,7 +38,7 @@ const LocationDrawer = ({
   onLocationTap,
   onAction,
 }: LocationDrawerProps) => {
-  const [snap, setSnap] = useState<string | number>("148px");
+  const [snap, setSnap] = useState<string | number>("204px");
   const topLocation = locations[0] ?? null;
   const groups = useMemo(() => groupByCategory(locations, activeCategories), [locations, activeCategories]);
 
@@ -46,7 +46,7 @@ const LocationDrawer = ({
     <Drawer
       open
       modal={false}
-      snapPoints={["148px", "55%"]}
+      snapPoints={["204px", "55%"]}
       activeSnapPoint={snap}
       setActiveSnapPoint={setSnap}
     >
@@ -63,7 +63,7 @@ const LocationDrawer = ({
           </DrawerTitle>
 
           {/* Collapsed preview: show top location */}
-          {snap === "148px" && topLocation && (
+          {snap === "204px" && topLocation && (
             <button
               className="flex items-center gap-3 mt-2 w-full text-left rounded-lg bg-background/60 border border-border px-4 py-3 transition hover:bg-background/80"
               onClick={() => onLocationTap(topLocation)}

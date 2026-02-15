@@ -4,7 +4,9 @@
       "Bash(npx tsc:*)",
       "Bash(vercel:*)",
       "Bash(wc:*)",
-      "Bash(npm uninstall:*)"
+      "Bash(npm uninstall:*)",
+      "Bash(npx vercel env add:*)",
+      "Bash(npx vercel env:*)"
     ]
   }
 }

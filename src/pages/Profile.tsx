@@ -1,6 +1,7 @@
 import { useMemo } from "react";
-import { ArrowLeft, RefreshCw, Loader } from "lucide-react";
+import { RefreshCw, Loader } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import BottomNav from "@/components/BottomNav";
 import { getRatedLocationIds } from "@/lib/userId";
 import type { RatedEntry } from "@/lib/userId";
 import { CATEGORY_COLORS, PHASE_LABELS } from "@/data/mockData";
@@ -81,13 +82,7 @@ const Profile = () => {
     <div className="min-h-screen bg-background">
       {/* Header */}
       <div className="sticky top-0 z-10 bg-card/95 backdrop-blur-md border-b border-border px-4 py-3">
-        <div className="flex items-center gap-3 max-w-lg mx-auto">
-          <button
-            onClick={() => navigate("/")}
-            className="p-2 rounded-lg hover:bg-surface-hover transition-colors"
-          >
-            <ArrowLeft className="h-5 w-5 text-foreground" />
-          </button>
+        <div className="max-w-lg mx-auto">
           <div>
             <h1 className="font-display font-bold text-lg text-foreground">My Ratings</h1>
             <p className="text-xs text-muted-foreground">
@@ -103,7 +98,7 @@ const Profile = () => {
       </div>
 
       {/* Ratings list */}
-      <div className="max-w-lg mx-auto px-4 py-4 space-y-3">
+      <div className="max-w-lg mx-auto px-4 py-4 pb-20 space-y-3">
         {sortedRatings.length === 0 ? (
           <div className="text-center py-16">
             <p className="text-4xl mb-3">📍</p>
@@ -184,6 +179,7 @@ const Profile = () => {
           })
         )}
       </div>
+      <BottomNav />
     </div>
   );
 };

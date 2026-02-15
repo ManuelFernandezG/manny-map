@@ -135,8 +135,11 @@ const MapView = ({
 
     L.control.zoom({ position: "bottomright" }).addTo(map);
 
-    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+    const maptilerKey = import.meta.env.VITE_MAPTILER_KEY || "";
+    L.tileLayer(`https://api.maptiler.com/maps/hybrid/{z}/{x}/{y}.jpg?key=${maptilerKey}`, {
+      attribution: '&copy; <a href="https://www.maptiler.com/">MapTiler</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+      tileSize: 512,
+      zoomOffset: -1,
     }).addTo(map);
 
     map.on("click", (e: L.LeafletMouseEvent) => {
