@@ -13,7 +13,7 @@ import ReviewModal from "@/components/ReviewModal";
 import LocationDetailModal from "@/components/LocationDetailModal";
 import CreateLocationModal from "@/components/CreateLocationModal";
 import SignupPrompt from "@/components/SignupPrompt";
-import { CITIES, CATEGORIES, PHASE_LABELS } from "@/data/mockData";
+import { CITIES, CATEGORIES, CATEGORY_GROUPS, PHASE_LABELS } from "@/data/mockData";
 import type { Location } from "@/data/mockData";
 import type { CheckinData, ReviewData } from "@/lib/ratings";
 import { toast } from "sonner";
@@ -44,7 +44,8 @@ const Index = () => {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
 
-  const [activeCategories, setActiveCategories] = useState<Set<string>>(() => new Set(CATEGORIES));
+  const GROUPS = useMemo(() => ["nightlife", "food", "outdoors", "events"] as const, []);
+  const [activeGroups, setActiveGroups] = useState<Set<string>>(() => new Set(GROUPS));
   const [ratedLocationIds, setRatedLocationIds] = useState<Map<string, RatedEntry>>(() => getRatedLocationIds());
   const { locations, loading, error } = useLocations({ city });
 
@@ -85,7 +86,7 @@ const Index = () => {
     [locations, city]
   );
 
-  const visibleLocations = useMemo(() => {
+  const inViewLocations = useMemo(() => {
     if (!mapBounds) return filteredLocations;
     const [west, south, east, north] = mapBounds;
     const centerLat = (south + north) / 2;
@@ -102,9 +103,43 @@ const Index = () => {
       });
   }, [filteredLocations, mapBounds]);
 
+  const visibleLocations = useMemo(() => {
+    return inViewLocations.filter((l) => {
+      const group = CATEGORY_GROUPS[l.category];
+      return group && activeGroups.has(group);
+    });
+  }, [inViewLocations, activeGroups]);
+
+  const locationsForMap = useMemo(
+    () =>
+      filteredLocations.filter((l) => {
+        const group = CATEGORY_GROUPS[l.category];
+        return group && activeGroups.has(group);
+      }),
+    [filteredLocations, activeGroups]
+  );
+
+  const activeCategories = useMemo(
+    () => new Set(CATEGORIES.filter((c) => activeGroups.has(CATEGORY_GROUPS[c] ?? ""))),
+    [activeGroups]
+  );
+
+  const ratedCountByGroup = useMemo(() => {
+    const count: Record<string, number> = {};
+    filteredLocations.forEach((loc) => {
+      if (!ratedLocationIds.has(loc.id)) return;
+      const group = CATEGORY_GROUPS[loc.category];
+      if (group) count[group] = (count[group] ?? 0) + 1;
+    });
+    return count;
+  }, [filteredLocations, ratedLocationIds]);
+
   const ratedLocations = useMemo(
-    () => filteredLocations.filter((l) => ratedLocationIds.has(l.id)),
-    [filteredLocations, ratedLocationIds]
+    () =>
+      filteredLocations.filter(
+        (l) => ratedLocationIds.has(l.id) && activeGroups.has(CATEGORY_GROUPS[l.category] ?? "")
+      ),
+    [filteredLocations, ratedLocationIds, activeGroups]
   );
 
   const safeRatedIndex = Math.min(ratedActiveIndex, Math.max(0, ratedLocations.length - 1));
@@ -126,20 +161,20 @@ const Index = () => {
     }
   }, [getLocationAction]);
 
-  const handleCategoryToggle = useCallback((category: string) => {
-    setActiveCategories((prev) => {
+  const handleGroupToggle = useCallback((groupId: string) => {
+    setActiveGroups((prev) => {
       const next = new Set(prev);
-      if (next.has(category)) next.delete(category);
-      else next.add(category);
+      if (next.has(groupId)) next.delete(groupId);
+      else next.add(groupId);
       return next;
     });
   }, []);
 
-  const handleCategoryToggleAll = useCallback(() => {
-    setActiveCategories((prev) =>
-      prev.size === CATEGORIES.length ? new Set<string>() : new Set(CATEGORIES)
+  const handleGroupToggleAll = useCallback(() => {
+    setActiveGroups((prev) =>
+      prev.size === GROUPS.length ? new Set<string>() : new Set(GROUPS)
     );
-  }, []);
+  }, [GROUPS]);
 
   const handleLocationClick = useCallback((loc: Location) => {
     setSelectedLocation(loc);
@@ -284,7 +319,7 @@ const Index = () => {
       {/* Map */}
       <div className="absolute inset-0">
         <MapView
-          locations={filteredLocations}
+          locations={locationsForMap}
           center={cityCenter}
           zoom={cityConfig.zoom}
           ratedLocationIds={ratedLocationIds}
@@ -349,9 +384,10 @@ const Index = () => {
         </div>
 
         <CategoryFilter
-          activeCategories={activeCategories}
-          onToggle={handleCategoryToggle}
-          onToggleAll={handleCategoryToggleAll}
+          activeGroups={activeGroups}
+          onToggle={handleGroupToggle}
+          onToggleAll={handleGroupToggleAll}
+          ratedCountByGroup={ratedCountByGroup}
         />
       </div>
 
@@ -359,7 +395,7 @@ const Index = () => {
       {!loading && (
         <div className="absolute top-40 right-4 z-[999] bg-card/90 backdrop-blur-md rounded-lg px-3 py-2 border border-border">
           <p className="text-sm font-display font-semibold text-foreground">
-            {visibleLocations.length} of {filteredLocations.length} spots in view
+            {visibleLocations.length} of {inViewLocations.length} spots in view
           </p>
         </div>
       )}

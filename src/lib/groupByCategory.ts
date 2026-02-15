@@ -18,19 +18,19 @@ export function groupByCategory(
     map.set(loc.category, list);
   });
 
-  const groups = CATEGORIES
-    .filter((cat) => map.has(cat))
-    .map((cat) => ({
-      category: cat,
-      locations: map.get(cat)!,
-      isPriority: priorityCategories ? priorityCategories.has(cat) : true,
-    }));
+  // Use insertion order (order spots appear) instead of fixed CATEGORIES order
+  const categoryOrder = Array.from(map.keys());
+  const groups = categoryOrder.map((cat) => ({
+    category: cat,
+    locations: map.get(cat)!,
+    isPriority: priorityCategories ? priorityCategories.has(cat) : true,
+  }));
 
   if (!priorityCategories || priorityCategories.size === 0 || priorityCategories.size === CATEGORIES.length) {
     return groups;
   }
 
-  // Selected categories first, then the rest — each sub-list keeps CATEGORIES order
+  // Selected categories first, then the rest — preserve spot order within each group
   const priority = groups.filter((g) => g.isPriority);
   const rest = groups.filter((g) => !g.isPriority);
   return [...priority, ...rest];

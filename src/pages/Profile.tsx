@@ -3,7 +3,7 @@ import { ArrowLeft, RefreshCw, Loader } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { getRatedLocationIds } from "@/lib/userId";
 import type { RatedEntry } from "@/lib/userId";
-import { CATEGORIES, CATEGORY_COLORS, PHASE_LABELS } from "@/data/mockData";
+import { CATEGORY_COLORS, PHASE_LABELS } from "@/data/mockData";
 import type { Location } from "@/data/mockData";
 import { useLocations } from "@/hooks/useLocations";
 
@@ -73,9 +73,8 @@ const Profile = () => {
       list.push(item);
       map.set(item.location.category, list);
     });
-    return CATEGORIES
-      .filter((cat) => map.has(cat))
-      .map((cat) => ({ category: cat, items: map.get(cat)! }));
+    // Use insertion order (order spots appear) instead of fixed CATEGORIES order
+    return Array.from(map.entries()).map(([category, items]) => ({ category, items }));
   }, [sortedRatings]);
 
   return (
