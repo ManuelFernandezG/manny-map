@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { X, MapPin } from "lucide-react";
-import { CATEGORIES } from "@/data/mockData";
+import { NIGHTLIFE_CATEGORIES } from "@/data/mockData";
 
 interface CreateLocationModalProps {
   lat: number;
@@ -11,7 +11,7 @@ interface CreateLocationModalProps {
 
 const CreateLocationModal = ({ lat, lng, onSubmit, onClose }: CreateLocationModalProps) => {
   const [name, setName] = useState("");
-  const [category, setCategory] = useState("Restaurant");
+  const [category, setCategory] = useState("Bar");
   const [address, setAddress] = useState("");
   const [hours, setHours] = useState("");
   const [description, setDescription] = useState("");
@@ -60,7 +60,7 @@ const CreateLocationModal = ({ lat, lng, onSubmit, onClose }: CreateLocationModa
           <div>
             <label className="text-xs font-medium text-muted-foreground block mb-1.5">Category</label>
             <div className="flex flex-wrap gap-1.5">
-              {CATEGORIES.map((cat) => (
+              {NIGHTLIFE_CATEGORIES.map((cat) => (
                 <button
                   key={cat}
                   onClick={() => setCategory(cat)}

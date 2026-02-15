@@ -46,7 +46,8 @@ const Index = () => {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
 
-  const GROUPS = useMemo(() => ["nightlife", "food", "outdoors", "events"] as const, []);
+  /** Nightlife-first: only Nightlife category group */
+  const GROUPS = useMemo(() => ["nightlife"] as const, []);
   const [activeGroups, setActiveGroups] = useState<Set<string>>(() => new Set(GROUPS));
   const [ratedLocationIds, setRatedLocationIds] = useState<Map<string, RatedEntry>>(() => getRatedLocationIds());
   const { locations, loading, error } = useLocations({ city });

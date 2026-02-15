@@ -2,11 +2,9 @@ import { useState, useRef, useEffect } from "react";
 import { ChevronDown, Check } from "lucide-react";
 import type { CategoryGroup } from "@/data/mockData";
 
+/** Nightlife-first scope: only Nightlife group shown */
 const GROUPS: { id: CategoryGroup; label: string }[] = [
   { id: "nightlife", label: "Nightlife" },
-  { id: "food", label: "Food" },
-  { id: "outdoors", label: "Outdoors" },
-  { id: "events", label: "Events" },
 ];
 
 interface CategoryFilterProps {

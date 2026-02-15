@@ -1,6 +1,6 @@
 /**
- * Delete locations that are NOT Bar, Club, Nightclub, Restaurant, or Cafe.
- * Keeps only nightlife and food categories.
+ * Delete locations that are NOT nightlife (Bar, Club, Nightclub).
+ * Keeps only Bar, Club, Nightclub. Removes Restaurant, Cafe, Gym, Park, etc.
  *
  * Setup (pick one):
  * A) Save service account JSON as scripts/serviceAccountKey.json
@@ -19,7 +19,7 @@ import { dirname, join } from 'path';
 import { initializeApp, cert } from 'firebase-admin/app';
 import { getFirestore } from 'firebase-admin/firestore';
 
-const KEEP_CATEGORIES = ['Bar', 'Club', 'Nightclub', 'Restaurant', 'Cafe'];
+const KEEP_CATEGORIES = ['Bar', 'Club', 'Nightclub'];
 const EXECUTE = process.argv.includes('--execute');
 
 const __dirname = dirname(fileURLToPath(import.meta.url));

@@ -49,6 +49,9 @@ export const CATEGORIES = [
   "Beach", "Trail", "Run Club", "Festival", "Concert",
 ] as const;
 
+/** Nightlife-only categories (Phase 1 scope) */
+export const NIGHTLIFE_CATEGORIES = ["Bar", "Club"] as const;
+
 export type CategoryGroup = "nightlife" | "food" | "outdoors" | "events";
 
 export const CATEGORY_GROUPS: Record<string, CategoryGroup> = {
