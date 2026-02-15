@@ -12,7 +12,7 @@ import {
 import { db } from './firebase';
 import type { Location, AgeGroupData, EmojiWord } from '@/data/mockData';
 import { AGE_GROUPS, EMOJI_CATEGORIES } from '@/data/mockData';
-import { getUserId } from './userId';
+import { getUserId, addRatedLocationId } from './userId';
 
 // Build a set of all valid emoji+word combinations from the predefined categories
 const VALID_PAIRS = new Set<string>();
@@ -89,6 +89,9 @@ export async function submitRating(
     await addDoc(ratingsRef, ratingData);
     console.log('✅ Created new rating');
   }
+
+  // Track this location as rated by the user
+  addRatedLocationId(locationId);
 
   // Trigger aggregation and return updated fields
   return await aggregateRatings(locationId);

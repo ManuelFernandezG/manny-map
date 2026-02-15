@@ -5,6 +5,7 @@
 
 const USER_ID_KEY = 'mannymap_user_id';
 const RATING_COUNT_KEY = 'mannymap_rating_count';
+const RATED_LOCATIONS_KEY = 'mannymap_rated_locations';
 
 export function getUserId(): string {
   if (typeof window === 'undefined') return '';
@@ -57,5 +58,28 @@ export function resetRatingCount(): void {
     localStorage.removeItem(RATING_COUNT_KEY);
   } catch (error) {
     console.error('Error resetting rating count:', error);
+  }
+}
+
+export function getRatedLocationIds(): Set<string> {
+  if (typeof window === 'undefined') return new Set();
+
+  try {
+    const raw = localStorage.getItem(RATED_LOCATIONS_KEY);
+    return raw ? new Set(JSON.parse(raw)) : new Set();
+  } catch {
+    return new Set();
+  }
+}
+
+export function addRatedLocationId(locationId: string): void {
+  if (typeof window === 'undefined') return;
+
+  try {
+    const ids = getRatedLocationIds();
+    ids.add(locationId);
+    localStorage.setItem(RATED_LOCATIONS_KEY, JSON.stringify([...ids]));
+  } catch {
+    // silently fail
   }
 }

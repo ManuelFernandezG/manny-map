@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback, useMemo, useEffect } from "react";
 import { Flame, Loader, UserPlus } from "lucide-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import MapView from "@/components/MapView";
@@ -13,6 +13,7 @@ import { CITIES } from "@/data/mockData";
 import type { Location } from "@/data/mockData";
 import { toast } from "sonner";
 import { useLocations } from "@/hooks/useLocations";
+import { getRatedLocationIds } from "@/lib/userId";
 import { collection, addDoc, serverTimestamp } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 
@@ -33,6 +34,9 @@ const Index = () => {
   
   const queryClient = useQueryClient();
 
+  // Track which locations the current user has rated
+  const [ratedLocationIds, setRatedLocationIds] = useState<Set<string>>(() => getRatedLocationIds());
+
   // Fetch real locations from Firebase (cached per city by React Query)
   const { locations, loading, error } = useLocations({ city });
 
@@ -46,6 +50,10 @@ const Index = () => {
   });
 
   const cityConfig = CITIES[city];
+  const cityCenter = useMemo<[number, number]>(
+    () => [cityConfig.lat, cityConfig.lng],
+    [cityConfig.lat, cityConfig.lng]
+  );
   const filteredLocations = useMemo(
     () => locations.filter((l) => l.city === city),
     [locations, city]
@@ -94,6 +102,9 @@ const Index = () => {
 
       setUserAgeGroup(ageGroup);
       localStorage.setItem("mannymap_age_group", ageGroup);
+
+      // Refresh rated location IDs so the marker updates from gray dot to emoji
+      setRatedLocationIds(getRatedLocationIds());
 
       import("@/lib/userId").then(({ incrementRatingCount }) => {
         const newCount = incrementRatingCount();
@@ -186,8 +197,9 @@ const Index = () => {
       <div className="absolute inset-0">
         <MapView
           locations={filteredLocations}
-          center={[cityConfig.lat, cityConfig.lng]}
+          center={cityCenter}
           zoom={cityConfig.zoom}
+          ratedLocationIds={ratedLocationIds}
           onLocationClick={handleLocationClick}
           onMapClick={handleMapClick}
         />
