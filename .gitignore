@@ -32,3 +32,6 @@ dist-ssr
 
 # Planning/notes docs
 docs/
+
+# Firebase service account (never commit)
+scripts/serviceAccountKey.json
