@@ -1,7 +1,8 @@
 import { useState, useCallback, useMemo, useEffect, lazy, Suspense } from "react";
-import { Flame, Loader } from "lucide-react";
+import { Loader } from "lucide-react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import BottomNav from "@/components/BottomNav";
+import Sidebar from "@/components/Sidebar";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import CitySelector from "@/components/CitySelector";
 import CategoryFilter from "@/components/CategoryFilter";
@@ -327,7 +328,9 @@ const Index = () => {
   };
 
   return (
-    <div className="h-screen w-screen overflow-hidden relative bg-background">
+    <div className="flex h-screen w-screen overflow-hidden bg-background">
+      <Sidebar />
+      <div className="relative flex-1 overflow-hidden">
       {/* Map */}
       <div className="absolute inset-0">
         <Suspense fallback={<div className="h-full w-full bg-muted animate-pulse" />}>
@@ -343,38 +346,34 @@ const Index = () => {
         </Suspense>
       </div>
 
-      {/* Loading overlay — translucent so the map shell is visible underneath */}
+      {/* Loading overlay */}
       {loading && (
-        <div className="absolute inset-0 z-[500] flex items-center justify-center bg-background/30 backdrop-blur-[2px]">
-          <div className="flex flex-col items-center gap-3 bg-card/90 rounded-xl px-6 py-4 border border-border">
-            <Loader className="h-6 w-6 text-primary animate-spin" />
-            <p className="text-foreground font-display font-semibold text-sm">Loading locations...</p>
+        <div className="absolute inset-0 z-[500] flex items-center justify-center bg-[#1A3A2A]/30 backdrop-blur-[2px]">
+          <div className="flex flex-col items-center gap-3 bg-[#1A3A2A]/95 backdrop-blur-md px-6 py-4 border border-[#2D5F2D]">
+            <Loader className="h-6 w-6 text-[#8FBF8F] animate-spin" />
+            <p className="text-white font-['DM_Sans'] font-medium text-sm">Loading locations...</p>
           </div>
         </div>
       )}
 
-      {/* Error state */}
+      {/* Error banner — non-blocking */}
       {error && !loading && (
-        <div className="absolute inset-0 z-[500] flex items-center justify-center bg-background/50 backdrop-blur-sm">
-          <div className="bg-card border border-border rounded-xl p-6 text-center max-w-sm">
-            <p className="text-red-400 font-display font-semibold mb-2">Error loading locations</p>
-            <p className="text-sm text-muted-foreground mb-4">{error}</p>
-            <button
-              onClick={() => window.location.reload()}
-              className="px-4 py-2 rounded-lg bg-primary text-primary-foreground font-display font-semibold hover:opacity-90"
-            >
-              Retry
-            </button>
-          </div>
+        <div className="absolute bottom-16 left-4 right-4 z-[999] flex items-center justify-between gap-3 bg-[#1A3A2A]/95 backdrop-blur-md px-4 py-3 border border-[#2D5F2D]">
+          <p className="text-sm text-[#C5DFC5] font-['DM_Sans'] truncate">{error}</p>
+          <button
+            onClick={() => window.location.reload()}
+            className="shrink-0 px-3 py-1.5 bg-[#2D5F2D] text-white text-sm font-['DM_Sans'] font-medium hover:bg-[#3A7A4A] transition-colors"
+          >
+            Retry
+          </button>
         </div>
       )}
 
       {/* Top bar */}
       <div className="absolute top-0 left-0 right-0 z-[1001] p-2 sm:p-4 space-y-2 sm:space-y-3">
         <div className="flex items-center justify-between gap-1.5 sm:gap-3">
-          <div className="flex items-center gap-1.5 bg-card/90 backdrop-blur-md rounded-lg px-2 py-1.5 sm:px-3 sm:py-2 border border-border">
-            <Flame className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
-            <span className="font-display font-bold text-foreground text-sm sm:text-lg">Manny Map</span>
+          <div className="flex items-center gap-1.5 bg-[#1A3A2A]/95 backdrop-blur-md px-2 py-1.5 sm:px-3 sm:py-2 border border-[#2D5F2D]">
+            <span className="font-['DM_Sans'] font-medium text-[#8FBF8F] text-sm sm:text-lg">Manny Map</span>
           </div>
           <CitySelector selectedCity={city} onCityChange={setCity} />
         </div>
@@ -397,8 +396,8 @@ const Index = () => {
 
       {/* Location count badge */}
       {!loading && (
-        <div className="absolute top-40 right-4 z-[999] bg-card/90 backdrop-blur-md rounded-lg px-3 py-2 border border-border">
-          <p className="text-sm font-display font-semibold text-foreground">
+        <div className="absolute top-40 right-4 z-[999] bg-[#1A3A2A]/95 backdrop-blur-md px-3 py-2 border border-[#2D5F2D]">
+          <p className="text-sm font-['DM_Sans'] font-medium text-[#C5DFC5]">
             {visibleLocations.length} of {inViewLocations.length} spots in view
           </p>
         </div>
@@ -502,6 +501,7 @@ const Index = () => {
       </Suspense>
 
       <BottomNav />
+      </div>
     </div>
   );
 };

@@ -6,7 +6,13 @@
       "Bash(wc:*)",
       "Bash(npm uninstall:*)",
       "Bash(npx vercel env add:*)",
-      "Bash(npx vercel env:*)"
+      "Bash(npx vercel env:*)",
+      "Bash(code --list-extensions:*)",
+      "Bash(python3:*)",
+      "Bash(claude mcp:*)",
+      "Bash(env:*)",
+      "Bash(\"c:/Users/manny/.vscode/extensions/highagency.pencildev-0.6.24/out/mcp-server-windows-x64.exe\" --help)",
+      "WebFetch(domain:mixpanel.com)"
     ]
   }
 }

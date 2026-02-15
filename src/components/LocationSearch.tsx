@@ -63,7 +63,7 @@ const LocationSearch = ({
       loc.category.toLowerCase().includes(term) ||
       loc.address.toLowerCase().includes(term) ||
       loc.neighborhood.toLowerCase().includes(term)
-    ).slice(0, 10); // Limit to 10 results
+    ).slice(0, 10);
 
     setFilteredResults(results);
   }, [searchTerm, locations]);
@@ -84,7 +84,6 @@ const LocationSearch = ({
       const stored = localStorage.getItem(RECENT_SEARCHES_KEY);
       const existing = stored ? JSON.parse(stored) : [];
 
-      // Remove if already exists and add to front
       const filtered = existing.filter((id: string) => id !== location.id);
       const updated = [location.id, ...filtered].slice(0, MAX_RECENT);
 
@@ -114,7 +113,7 @@ const LocationSearch = ({
   return (
     <div ref={searchRef} className="relative w-full max-w-md">
       <div className="relative">
-        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-[#7A8A7A] pointer-events-none" />
         <input
           type="text"
           value={searchTerm}
@@ -124,12 +123,12 @@ const LocationSearch = ({
           }}
           onFocus={() => setIsOpen(true)}
           placeholder={placeholder}
-          className="w-full pl-9 pr-9 py-2.5 rounded-lg bg-card border border-border text-foreground text-sm placeholder:text-muted-foreground focus:outline-none focus:border-primary transition-colors"
+          className="w-full pl-9 pr-9 py-2.5 bg-[#1A3A2A]/95 backdrop-blur-md border border-[#2D5F2D] text-[#C5DFC5] text-sm font-['Inter'] placeholder:text-[#7A8A7A] focus:outline-none focus:border-[#3A7A4A] transition-colors"
         />
         {searchTerm && (
           <button
             onClick={handleClear}
-            className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+            className="absolute right-3 top-1/2 transform -translate-y-1/2 text-[#7A8A7A] hover:text-[#C5DFC5] transition-colors"
           >
             <X className="h-4 w-4" />
           </button>
@@ -138,23 +137,23 @@ const LocationSearch = ({
 
       {/* Suggestions (Recent + Top) */}
       {showSuggestions && (
-        <div className="absolute top-full left-0 right-0 mt-2 rounded-lg bg-card border border-border shadow-xl z-[1100] overflow-hidden">
+        <div className="absolute top-full left-0 right-0 mt-2 bg-[#1A3A2A] border border-[#2D5F2D] shadow-xl z-[1100] overflow-hidden">
           {/* Recent Searches */}
           {recentSearches.length > 0 && (
-            <div className="border-b border-border">
-              <div className="px-4 py-2 flex items-center gap-2 bg-surface/50">
-                <Clock className="h-3.5 w-3.5 text-muted-foreground" />
-                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Recent</p>
+            <div className="border-b border-[#2D5F2D]">
+              <div className="px-4 py-2 flex items-center gap-2 bg-[#2D5F2D]/30">
+                <Clock className="h-3.5 w-3.5 text-[#7A8A7A]" />
+                <p className="text-xs font-medium text-[#7A8A7A] uppercase tracking-wide">Recent</p>
               </div>
               {recentSearches.map((location) => (
                 <button
                   key={location.id}
                   onClick={() => handleSelect(location)}
-                  className="w-full text-left px-4 py-2.5 hover:bg-surface-hover transition-colors group"
+                  className="w-full text-left px-4 py-2.5 hover:bg-[#2D5F2D]/50 transition-colors group"
                 >
                   <div className="flex items-center gap-2">
                     <span className="text-base">{location.dominantEmoji}</span>
-                    <span className="font-display font-semibold text-foreground text-sm group-hover:text-primary">
+                    <span className="font-['DM_Sans'] font-medium text-[#C5DFC5] text-sm group-hover:text-[#8FBF8F]">
                       {location.name}
                     </span>
                   </div>
@@ -166,24 +165,24 @@ const LocationSearch = ({
           {/* Top Suggestions */}
           {topSuggestions.length > 0 && (
             <div>
-              <div className="px-4 py-2 flex items-center gap-2 bg-surface/50">
-                <Sparkles className="h-3.5 w-3.5 text-primary" />
-                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Suggestions</p>
+              <div className="px-4 py-2 flex items-center gap-2 bg-[#2D5F2D]/30">
+                <Sparkles className="h-3.5 w-3.5 text-[#8FBF8F]" />
+                <p className="text-xs font-medium text-[#7A8A7A] uppercase tracking-wide">Suggestions</p>
               </div>
               {topSuggestions.map((location) => (
                 <button
                   key={location.id}
                   onClick={() => handleSelect(location)}
-                  className="w-full text-left px-4 py-2.5 hover:bg-surface-hover transition-colors group"
+                  className="w-full text-left px-4 py-2.5 hover:bg-[#2D5F2D]/50 transition-colors group"
                 >
                   <div className="flex items-center justify-between gap-2">
                     <div className="flex items-center gap-2 flex-1 min-w-0">
                       <span className="text-base">{location.dominantEmoji}</span>
-                      <span className="font-display font-semibold text-foreground text-sm group-hover:text-primary truncate">
+                      <span className="font-['DM_Sans'] font-medium text-[#C5DFC5] text-sm group-hover:text-[#8FBF8F] truncate">
                         {location.name}
                       </span>
                     </div>
-                    <div className="flex items-center gap-1.5 text-xs text-muted-foreground flex-shrink-0">
+                    <div className="flex items-center gap-1.5 text-xs text-[#7A8A7A] flex-shrink-0">
                       <TrendingUp className="h-3 w-3" />
                       <span>{location.totalRatings}</span>
                     </div>
@@ -197,27 +196,27 @@ const LocationSearch = ({
 
       {/* Search Results */}
       {showResults && (
-        <div className="absolute top-full left-0 right-0 mt-2 rounded-lg bg-card border border-border shadow-xl z-[1100] max-h-96 overflow-y-auto">
+        <div className="absolute top-full left-0 right-0 mt-2 bg-[#1A3A2A] border border-[#2D5F2D] shadow-xl z-[1100] max-h-96 overflow-y-auto">
           {filteredResults.map((location) => (
             <button
               key={location.id}
               onClick={() => handleSelect(location)}
-              className="w-full text-left px-4 py-3 hover:bg-surface-hover transition-colors border-b border-border last:border-b-0 group"
+              className="w-full text-left px-4 py-3 hover:bg-[#2D5F2D]/50 transition-colors border-b border-[#2D5F2D] last:border-b-0 group"
             >
               <div className="flex items-start justify-between gap-2">
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
                     <span className="text-lg">{ratedLocationIds?.get(location.id)?.emoji || location.dominantEmoji}</span>
-                    <h3 className="font-display font-semibold text-foreground truncate group-hover:text-primary">
+                    <h3 className="font-['DM_Sans'] font-medium text-[#C5DFC5] truncate group-hover:text-[#8FBF8F]">
                       {location.name}
                     </h3>
                   </div>
-                  <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
-                    <span className="px-2 py-0.5 rounded-full bg-surface text-xs font-medium">
+                  <div className="flex items-center gap-2 mt-1 text-xs text-[#7A8A7A]">
+                    <span className="px-2 py-0.5 bg-[#2D5F2D]/50 text-xs font-medium text-[#8FBF8F]">
                       {location.category}
                     </span>
                     <span>{location.dominantWord}</span>
-                    <span>•</span>
+                    <span>·</span>
                     <span>{location.totalRatings} ratings</span>
                   </div>
                 </div>
@@ -229,8 +228,8 @@ const LocationSearch = ({
 
       {/* No Results */}
       {showNoResults && (
-        <div className="absolute top-full left-0 right-0 mt-2 rounded-lg bg-card border border-border shadow-xl z-[1100] px-4 py-3">
-          <p className="text-sm text-muted-foreground">No locations found matching "{searchTerm}"</p>
+        <div className="absolute top-full left-0 right-0 mt-2 bg-[#1A3A2A] border border-[#2D5F2D] shadow-xl z-[1100] px-4 py-3">
+          <p className="text-sm text-[#7A8A7A]">No locations found matching "{searchTerm}"</p>
         </div>
       )}
     </div>

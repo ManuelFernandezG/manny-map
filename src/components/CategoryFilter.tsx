@@ -47,17 +47,17 @@ const CategoryFilter = ({ activeGroups, onToggle, onToggleAll, ratedCountByGroup
     <div ref={ref} className="relative w-fit">
       <button
         onClick={() => setOpen((p) => !p)}
-        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-card/90 border border-border text-sm font-display font-semibold text-foreground hover:border-primary/40 transition-colors"
+        className="flex items-center gap-1.5 px-3 py-1.5 bg-[#1A3A2A]/95 backdrop-blur-md border border-[#2D5F2D] text-sm font-['DM_Sans'] font-medium text-[#C5DFC5] hover:border-[#3A7A4A] transition-colors"
       >
         {label}
-        <ChevronDown className={`h-3.5 w-3.5 text-muted-foreground transition-transform ${open ? "rotate-180" : ""}`} />
+        <ChevronDown className={`h-3.5 w-3.5 text-[#7A8A7A] transition-transform ${open ? "rotate-180" : ""}`} />
       </button>
 
       {open && (
-        <div className="absolute top-full left-0 mt-1.5 w-52 rounded-lg bg-card border border-border shadow-xl z-[1002] overflow-hidden">
+        <div className="absolute top-full left-0 mt-1.5 w-52 bg-[#1A3A2A] border border-[#2D5F2D] shadow-xl z-[1002] overflow-hidden">
           <button
             onClick={onToggleAll}
-            className="w-full text-left px-3 py-2 text-xs font-display font-semibold text-muted-foreground hover:bg-surface-hover transition-colors border-b border-border"
+            className="w-full text-left px-3 py-2 text-xs font-['DM_Sans'] font-medium text-[#7A8A7A] hover:bg-[#2D5F2D]/50 transition-colors border-b border-[#2D5F2D]"
           >
             {allActive ? "Deselect All" : "Select All"}
           </button>
@@ -71,17 +71,17 @@ const CategoryFilter = ({ activeGroups, onToggle, onToggleAll, ratedCountByGroup
                 <button
                   key={id}
                   onClick={() => handleGroupClick(id)}
-                  className="w-full flex items-center gap-2.5 px-3 py-2.5 text-sm hover:bg-surface-hover transition-colors"
+                  className="w-full flex items-center gap-2.5 px-3 py-2.5 text-sm hover:bg-[#2D5F2D]/50 transition-colors"
                 >
-                  <span className={`w-4 h-4 rounded flex items-center justify-center border transition-colors ${
-                    isActive ? "bg-primary border-primary" : "border-border"
+                  <span className={`w-4 h-4 flex items-center justify-center border transition-colors ${
+                    isActive ? "bg-[#2D5F2D] border-[#3A7A4A]" : "border-[#3A7A4A]"
                   }`}>
-                    {isActive && <Check className="h-3 w-3 text-primary-foreground" />}
+                    {isActive && <Check className="h-3 w-3 text-[#8FBF8F]" />}
                   </span>
-                  <span className="font-display font-semibold text-foreground flex-1 text-left">
+                  <span className="font-['DM_Sans'] font-medium text-[#C5DFC5] flex-1 text-left">
                     {groupLabel}
                   </span>
-                  <span className="text-[10px] text-muted-foreground">
+                  <span className="text-[10px] text-[#7A8A7A]">
                     {ratedCount} rated
                   </span>
                 </button>
