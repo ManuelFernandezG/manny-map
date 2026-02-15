@@ -28,66 +28,160 @@ export interface Location {
   divergenceFlagged: boolean;
   dominantEmoji: string;
   dominantWord: string;
+  averageScore?: number;
+  ratingsByGender?: Record<string, AgeGroupData>;
+  checkinCount?: number;
 }
 
+// --- Categories ---
+
 export const CATEGORIES = [
-  "Restaurant", "Nightclub", "Park", "Gym", "Run Route",
-  "Event", "Pop-up", "Bar", "Cafe", "Other"
+  "Bar", "Club", "Restaurant", "Cafe", "Gym",
+  "Beach", "Trail", "Run Club", "Festival", "Concert",
 ] as const;
 
-export const CATEGORY_COLORS: Record<string, string> = {
-  Restaurant: "bg-red-500/20 text-red-400",
-  Nightclub: "bg-purple-500/20 text-purple-400",
-  Park: "bg-blue-500/20 text-blue-400",
-  Gym: "bg-orange-500/20 text-orange-400",
-  "Run Route": "bg-green-500/20 text-green-400",
-  Event: "bg-pink-500/20 text-pink-400",
-  "Pop-up": "bg-yellow-500/20 text-yellow-400",
-  Bar: "bg-indigo-500/20 text-indigo-400",
-  Cafe: "bg-amber-500/20 text-amber-400",
-  Other: "bg-gray-500/20 text-gray-400",
+export type CategoryGroup = "nightlife" | "food" | "outdoors" | "events";
+
+export const CATEGORY_GROUPS: Record<string, CategoryGroup> = {
+  Bar: "nightlife",
+  Club: "nightlife",
+  Restaurant: "food",
+  Cafe: "food",
+  Gym: "outdoors",
+  Beach: "outdoors",
+  Trail: "outdoors",
+  "Run Club": "events",
+  Festival: "events",
+  Concert: "events",
 };
 
-export const EMOJI_CATEGORIES = {
-  "Energy": [
-    { emoji: "🔥", suggestions: ["Fire", "Lit", "Heat"] },
-    { emoji: "💀", suggestions: ["Dead", "Boring", "Mid"] },
-    { emoji: "👑", suggestions: ["Vibes", "Royal", "Elite"] },
-    { emoji: "😴", suggestions: ["Slow", "Sleepy", "Dead"] },
-    { emoji: "🤯", suggestions: ["Crazy", "Wild", "Insane"] },
-    { emoji: "⚡", suggestions: ["Electric", "Hype", "Energy"] },
+export const CATEGORY_COLORS: Record<string, string> = {
+  Bar: "bg-indigo-500/20 text-indigo-400",
+  Club: "bg-purple-500/20 text-purple-400",
+  Restaurant: "bg-red-500/20 text-red-400",
+  Cafe: "bg-amber-500/20 text-amber-400",
+  Gym: "bg-orange-500/20 text-orange-400",
+  Beach: "bg-cyan-500/20 text-cyan-400",
+  Trail: "bg-green-500/20 text-green-400",
+  "Run Club": "bg-lime-500/20 text-lime-400",
+  Festival: "bg-pink-500/20 text-pink-400",
+  Concert: "bg-rose-500/20 text-rose-400",
+};
+
+// --- Review emoji configs per group ---
+
+export interface ReviewEmoji {
+  emoji: string;
+  word: string;
+  score: number; // 4=best, 1=worst
+}
+
+export interface ReviewDimension {
+  key: string;
+  label: string;
+  emojis: ReviewEmoji[];
+}
+
+export const REVIEW_CONFIG: Record<CategoryGroup, ReviewDimension[]> = {
+  nightlife: [
+    {
+      key: "vibe",
+      label: "Vibe",
+      emojis: [
+        { emoji: "💀", word: "Dead", score: 1 },
+        { emoji: "😴", word: "Slow", score: 2 },
+        { emoji: "🔥", word: "Fire", score: 3 },
+        { emoji: "🤯", word: "Crazy", score: 4 },
+      ],
+    },
   ],
-  "Price": [
-    { emoji: "💰", suggestions: ["Expensive", "Pricey", "Steep"] },
-    { emoji: "🤑", suggestions: ["Cheap", "Steal", "Budget"] },
-    { emoji: "💸", suggestions: ["Overpriced", "Ripoff", "Waste"] },
-    { emoji: "💵", suggestions: ["Worth it", "Fair", "Good deal"] },
+  food: [
+    {
+      key: "taste",
+      label: "Taste",
+      emojis: [
+        { emoji: "🤢", word: "Nasty", score: 1 },
+        { emoji: "😴", word: "Mid", score: 2 },
+        { emoji: "🔥", word: "Fire", score: 3 },
+        { emoji: "🤤", word: "Unreal", score: 4 },
+      ],
+    },
+    {
+      key: "price",
+      label: "Price",
+      emojis: [
+        { emoji: "💸", word: "Ripoff", score: 1 },
+        { emoji: "💰", word: "Pricey", score: 2 },
+        { emoji: "💵", word: "Fair", score: 3 },
+        { emoji: "🤑", word: "Steal", score: 4 },
+      ],
+    },
+    {
+      key: "service",
+      label: "Service",
+      emojis: [
+        { emoji: "😤", word: "Rude", score: 1 },
+        { emoji: "😐", word: "Mid", score: 2 },
+        { emoji: "👍", word: "Good", score: 3 },
+        { emoji: "😊", word: "Great", score: 4 },
+      ],
+    },
   ],
-  "Crowd": [
-    { emoji: "👥", suggestions: ["Crowded", "Packed", "Busy"] },
-    { emoji: "🤝", suggestions: ["Social", "Friendly", "Warm"] },
-    { emoji: "🧑‍🤝‍🧑", suggestions: ["Clique-y", "Exclusive", "Tight"] },
-    { emoji: "👤", suggestions: ["Quiet", "Chill", "Empty"] },
+  outdoors: [
+    {
+      key: "crowd",
+      label: "Crowd",
+      emojis: [
+        { emoji: "🏜️", word: "Empty", score: 1 },
+        { emoji: "👤", word: "Quiet", score: 2 },
+        { emoji: "👥", word: "Busy", score: 3 },
+        { emoji: "❌", word: "Packed", score: 4 },
+      ],
+    },
   ],
-  "Food": [
-    { emoji: "🍔", suggestions: ["Good food", "Delicious", "Bussin"] },
-    { emoji: "🤢", suggestions: ["Bad food", "Nasty", "Skip"] },
-    { emoji: "🍺", suggestions: ["Good drinks", "Strong", "Smooth"] },
-    { emoji: "☕", suggestions: ["Good coffee", "Cozy", "Warm"] },
-  ],
-  "Service": [
-    { emoji: "😤", suggestions: ["Rude staff", "Attitude", "Slow"] },
-    { emoji: "😊", suggestions: ["Great service", "Kind", "Attentive"] },
-    { emoji: "⏱️", suggestions: ["Long wait", "Forever", "Slow"] },
-    { emoji: "⚡", suggestions: ["Fast", "Quick", "Instant"] },
-  ],
-  "Location": [
-    { emoji: "🏜️", suggestions: ["Remote", "Far", "Hidden"] },
-    { emoji: "🚗", suggestions: ["Hard to park", "No parking", "Drive"] },
-    { emoji: "🌙", suggestions: ["Date spot", "Romantic", "Cozy"] },
-    { emoji: "👨‍👩‍👧‍👦", suggestions: ["Family", "Kid-friendly", "Safe"] },
+  events: [
+    {
+      key: "vibe",
+      label: "Vibe",
+      emojis: [
+        { emoji: "💀", word: "Dead", score: 1 },
+        { emoji: "😴", word: "Slow", score: 2 },
+        { emoji: "🔥", word: "Fire", score: 3 },
+        { emoji: "🤯", word: "Crazy", score: 4 },
+      ],
+    },
   ],
 };
+
+// --- Check-in field configs (unified across all groups) ---
+
+export const TRAVEL_TIME_OPTIONS = ["<5 min", "5-15 min", "15-30 min", "30+ min"] as const;
+export const GROUP_SIZE_OPTIONS = ["Solo", "2-3", "4-6", "7+"] as const;
+export const COMPANION_OPTIONS = ["Friends", "Date", "Family", "Mixed"] as const;
+
+// --- Positive emojis (score >= 3 from all review configs) ---
+
+export const POSITIVE_EMOJIS = new Set(
+  Object.values(REVIEW_CONFIG)
+    .flat()
+    .flatMap((dim) => dim.emojis)
+    .filter((e) => e.score >= 3)
+    .map((e) => e.emoji)
+);
+
+// --- Demographics ---
+
+export const GENDERS = ["Male", "Female"] as const;
+export const AGE_GROUPS = ["18-22", "23-28", "29-35", "36+"] as const;
+
+// --- Gender-specific terminology ---
+
+export const PHASE_LABELS = {
+  Male: { phase1: "Pre", phase2: "Afters" },
+  Female: { phase1: "Plans", phase2: "Debrief" },
+} as const;
+
+// --- Cities ---
 
 export const CITIES: Record<string, { lat: number; lng: number; zoom: number }> = {
   Ottawa: { lat: 45.4215, lng: -75.6972, zoom: 13 },
@@ -95,5 +189,3 @@ export const CITIES: Record<string, { lat: number; lng: number; zoom: number }> 
   Montreal: { lat: 45.5017, lng: -73.5673, zoom: 13 },
   Guelph: { lat: 43.5448, lng: -80.2482, zoom: 13 },
 };
-
-export const AGE_GROUPS = ["18-22", "23-28", "29-35", "36+"] as const;

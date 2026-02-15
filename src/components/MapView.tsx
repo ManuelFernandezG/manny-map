@@ -1,10 +1,10 @@
-import { useEffect, useRef, useCallback, useState, useMemo } from "react";
+import { useEffect, useRef, useCallback, useMemo } from "react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import "leaflet.heat";
 import type { Location } from "@/data/mockData";
+import type { RatedEntry } from "@/lib/userId";
 
-// Extend Leaflet types for the heat plugin
 declare module "leaflet" {
   function heatLayer(
     latlngs: (L.LatLngExpression | [number, number, number])[],
@@ -23,24 +23,27 @@ interface MapViewProps {
   locations: Location[];
   center: [number, number];
   zoom: number;
-  ratedLocationIds: Set<string>;
+  ratedLocationIds: Map<string, RatedEntry>;
   onLocationClick: (location: Location) => void;
   onMapClick: (lat: number, lng: number) => void;
+  onBoundsChange?: (bounds: [number, number, number, number]) => void;
 }
 
-function escapeHtml(str: string): string {
-  const div = document.createElement("div");
-  div.appendChild(document.createTextNode(str));
-  return div.innerHTML;
-}
-
-function createEmojiIcon(emoji: string, size: number = 40) {
-  return L.divIcon({
-    className: "emoji-marker",
-    html: `<div style="font-size: ${size}px; line-height: 1; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));">${emoji}</div>`,
-    iconSize: [size, size],
-    iconAnchor: [size / 2, size / 2],
-  });
+// Pre-create reusable icon cache
+const iconCache = new Map<string, L.DivIcon>();
+function getEmojiIcon(emoji: string, size: number): L.DivIcon {
+  const key = `${emoji}-${size}`;
+  let icon = iconCache.get(key);
+  if (!icon) {
+    icon = L.divIcon({
+      className: "emoji-marker",
+      html: `<div style="font-size:${size}px;line-height:1;filter:drop-shadow(0 2px 4px rgba(0,0,0,0.3))">${emoji}</div>`,
+      iconSize: [size, size],
+      iconAnchor: [size / 2, size / 2],
+    });
+    iconCache.set(key, icon);
+  }
+  return icon;
 }
 
 const MapView = ({
@@ -50,209 +53,202 @@ const MapView = ({
   ratedLocationIds,
   onLocationClick,
   onMapClick,
+  onBoundsChange,
 }: MapViewProps) => {
   const mapRef = useRef<L.Map | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-  const markersRef = useRef<(L.Marker | L.CircleMarker)[]>([]);
-  const heatLayerRef = useRef<L.Layer | null>(null);
   const lastCenterRef = useRef<[number, number]>(center);
   const lastZoomRef = useRef(zoom);
-  const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const [mapState, setMapState] = useState<{
-    zoom: number;
-    bounds: [number, number, number, number] | null;
-  }>({ zoom, bounds: null });
+  const rafRef = useRef<number>(0);
 
-  // Zoom threshold: heatmap below this, individual circles at or above
-  const CIRCLE_ZOOM_THRESHOLD = 15;
+  // Layer group for rated markers only
+  const ratedGroupRef = useRef<L.LayerGroup>(L.layerGroup());
+  const heatLayerRef = useRef<L.Layer | null>(null);
+  const heatVisibleRef = useRef(true);
 
-  // Split locations into rated and unrated
-  const { ratedLocations, unratedLocations, heatPoints } = useMemo(() => {
-    const rated: Location[] = [];
-    const unrated: Location[] = [];
-    const heat: [number, number, number][] = [];
+  // Refs for callbacks — prevents effect re-runs on handler identity changes
+  const onLocationClickRef = useRef(onLocationClick);
+  onLocationClickRef.current = onLocationClick;
+  const onMapClickRef = useRef(onMapClick);
+  onMapClickRef.current = onMapClick;
+  const onBoundsChangeRef = useRef(onBoundsChange);
+  onBoundsChangeRef.current = onBoundsChange;
 
-    locations.forEach((loc) => {
-      if (ratedLocationIds.has(loc.id)) {
-        rated.push(loc);
-      } else {
-        unrated.push(loc);
-      }
-      // All locations contribute to the heatmap
-      const intensity = Math.min(1, 0.3 + (loc.totalRatings / 20));
-      heat.push([loc.coordinates.lat, loc.coordinates.lng, intensity]);
+  // Compute heat points once when locations change
+  const heatPoints = useMemo(() => {
+    return locations.map((loc) => {
+      const intensity = Math.min(1, 0.2 + loc.totalRatings / 30);
+      return [loc.coordinates.lat, loc.coordinates.lng, intensity] as [number, number, number];
     });
+  }, [locations]);
 
-    return { ratedLocations: rated, unratedLocations: unrated, heatPoints: heat };
-  }, [locations, ratedLocationIds]);
-
-  // Debounced update of map state (bounds + zoom) after user stops moving
-  const scheduleUpdate = useCallback(() => {
-    if (debounceTimerRef.current) {
-      clearTimeout(debounceTimerRef.current);
-    }
-    debounceTimerRef.current = setTimeout(() => {
+  // Emit bounds to parent via rAF (fires on next paint, no setTimeout overhead)
+  const emitBounds = useCallback(() => {
+    cancelAnimationFrame(rafRef.current);
+    rafRef.current = requestAnimationFrame(() => {
       const map = mapRef.current;
       if (!map) return;
       const b = map.getBounds();
-      setMapState({
-        zoom: map.getZoom(),
-        bounds: [b.getWest(), b.getSouth(), b.getEast(), b.getNorth()],
-      });
-    }, 300);
+      onBoundsChangeRef.current?.([b.getWest(), b.getSouth(), b.getEast(), b.getNorth()]);
+    });
   }, []);
 
-  // Initialize map
+  // Update emoji scale CSS variable based on zoom level
+  const updateEmojiScale = useCallback(() => {
+    const map = mapRef.current;
+    const container = containerRef.current;
+    if (!map || !container) return;
+    const z = map.getZoom();
+    const scale = Math.max(0.6, Math.min(1.6, 0.6 + (z - 10) * 0.12));
+    container.style.setProperty("--emoji-scale", scale.toFixed(2));
+  }, []);
+
+  // Hide heatmap instantly during interaction (no canvas redraws while panning)
+  const hideHeat = useCallback(() => {
+    const map = mapRef.current;
+    const heat = heatLayerRef.current;
+    if (!map || !heat || !heatVisibleRef.current) return;
+    map.removeLayer(heat);
+    heatVisibleRef.current = false;
+  }, []);
+
+  // Show heatmap after interaction ends
+  const showHeat = useCallback(() => {
+    const map = mapRef.current;
+    const heat = heatLayerRef.current;
+    if (!map || !heat || heatVisibleRef.current) return;
+    map.addLayer(heat);
+    heatVisibleRef.current = true;
+  }, []);
+
+  // Initialize map (once)
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return;
 
     const map = L.map(containerRef.current, {
       center,
       zoom,
-      zoomControl: true,
+      zoomControl: false,
       attributionControl: true,
+      preferCanvas: true,
     });
 
+    L.control.zoom({ position: "bottomright" }).addTo(map);
+
     L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-      attribution:
-        '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
     }).addTo(map);
 
     map.on("click", (e: L.LeafletMouseEvent) => {
-      onMapClick(e.latlng.lat, e.latlng.lng);
+      onMapClickRef.current(e.latlng.lat, e.latlng.lng);
     });
 
-    map.on("moveend", scheduleUpdate);
-    map.on("zoomend", scheduleUpdate);
+    // Freeze heatmap during interaction for smooth panning
+    map.on("movestart", hideHeat);
+    map.on("zoomstart", hideHeat);
+    map.on("moveend", () => { showHeat(); emitBounds(); });
+    map.on("zoomend", () => { showHeat(); updateEmojiScale(); emitBounds(); });
+
+    // Set initial emoji scale
+    updateEmojiScale();
+
+    // Add rated markers layer group
+    ratedGroupRef.current.addTo(map);
 
     mapRef.current = map;
     lastCenterRef.current = center;
     lastZoomRef.current = zoom;
 
-    // Set initial bounds
+    // Initial bounds
     const b = map.getBounds();
-    setMapState({
-      zoom: map.getZoom(),
-      bounds: [b.getWest(), b.getSouth(), b.getEast(), b.getNorth()],
-    });
+    onBoundsChangeRef.current?.([b.getWest(), b.getSouth(), b.getEast(), b.getNorth()]);
 
     return () => {
-      if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
+      cancelAnimationFrame(rafRef.current);
       map.remove();
       mapRef.current = null;
     };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Update center/zoom only when city actually changes (value comparison, not reference)
+  // Fly to new city
   useEffect(() => {
     if (!mapRef.current) return;
     const [prevLat, prevLng] = lastCenterRef.current;
     const [newLat, newLng] = center;
-    const zoomChanged = zoom !== lastZoomRef.current;
-    const centerChanged = newLat !== prevLat || newLng !== prevLng;
-
-    if (centerChanged || zoomChanged) {
-      mapRef.current.flyTo(center, zoom, {
-        duration: 1.2,
-        easeLinearity: 0.25,
-      });
+    if (newLat !== prevLat || newLng !== prevLng || zoom !== lastZoomRef.current) {
+      mapRef.current.flyTo(center, zoom, { duration: 1.2, easeLinearity: 0.25 });
       lastCenterRef.current = center;
       lastZoomRef.current = zoom;
     }
   }, [center[0], center[1], zoom]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Update heatmap layer when locations change; hide when zoomed in past threshold
+  // Rebuild heatmap only when location data changes
   useEffect(() => {
-    if (!mapRef.current) return;
+    const map = mapRef.current;
+    if (!map) return;
 
-    // Remove old heat layer
     if (heatLayerRef.current) {
-      mapRef.current.removeLayer(heatLayerRef.current);
+      map.removeLayer(heatLayerRef.current);
       heatLayerRef.current = null;
+      heatVisibleRef.current = false;
     }
 
-    // Don't show heatmap at street-level zoom — circles take over
-    if (heatPoints.length === 0 || (mapState.bounds && mapState.zoom >= CIRCLE_ZOOM_THRESHOLD)) return;
+    if (heatPoints.length === 0) return;
 
-    // Lime-green gradient matching the app's brand
     const heat = L.heatLayer(heatPoints, {
-      radius: 18,
-      blur: 15,
+      radius: 14,
+      blur: 12,
       maxZoom: 15,
-      minOpacity: 0.2,
+      minOpacity: 0.12,
       gradient: {
         0.0: "#00000000",
-        0.2: "#84cc1640",
-        0.4: "#84cc1680",
-        0.6: "#a3e635b0",
-        0.8: "#facc15d0",
-        1.0: "#facc15",
+        0.3: "#84cc1625",
+        0.5: "#84cc1650",
+        0.7: "#a3e63580",
+        0.9: "#facc15a0",
+        1.0: "#facc15c0",
       },
     });
 
-    heat.addTo(mapRef.current);
     heatLayerRef.current = heat;
-  }, [heatPoints, mapState.zoom]);
+    heat.addTo(map);
+    heatVisibleRef.current = true;
+  }, [heatPoints]);
 
-  // Render rated emoji markers always; render unrated circles only when zoomed in past threshold
+  // Rebuild rated markers only when data changes (NOT on zoom/pan)
   useEffect(() => {
-    if (!mapRef.current || !mapState.bounds) return;
+    const map = mapRef.current;
+    if (!map) return;
 
-    // Remove old markers
-    markersRef.current.forEach((m) => m.remove());
-    markersRef.current = [];
+    ratedGroupRef.current.clearLayers();
 
-    const [west, south, east, north] = mapState.bounds;
-    const isInViewport = (lat: number, lng: number) =>
-      lat >= south && lat <= north && lng >= west && lng <= east;
+    locations.forEach((loc) => {
+      const entry = ratedLocationIds.get(loc.id);
+      if (!entry) return; // Skip unrated — heatmap covers them
 
-    // Rated locations: always show as emoji markers
-    ratedLocations.forEach((loc) => {
       const { lat, lng } = loc.coordinates;
-      if (!isInViewport(lat, lng)) return;
 
-      const emojiSize = Math.max(36, Math.min(56, 36 + (mapState.zoom - 10) * 4));
-      const marker = L.marker([lat, lng], {
-        icon: createEmojiIcon(loc.dominantEmoji, emojiSize),
-        title: loc.name,
-        zIndexOffset: 100,
-      })
-        .addTo(mapRef.current!)
-        .bindPopup(
-          `<div style="font-family: Outfit, sans-serif; font-weight: 600; color: #000;">${escapeHtml(loc.name)}</div>
-           <div style="font-size: 13px; color: #666;">${escapeHtml(loc.dominantEmoji)} ${escapeHtml(loc.dominantWord)} · ${loc.totalRatings} ratings</div>`
-        )
-        .on("click", () => onLocationClick(loc));
-
-      markersRef.current.push(marker);
-    });
-
-    // Unrated locations: show as circles only when zoomed in (heatmap handles zoomed-out view)
-    if (mapState.zoom >= CIRCLE_ZOOM_THRESHOLD) {
-      unratedLocations.forEach((loc) => {
-        const { lat, lng } = loc.coordinates;
-        if (!isInViewport(lat, lng)) return;
-
-        // Scale circle size with zoom: 5px at zoom 15, +2px per zoom level
-        const circleRadius = 5 + (mapState.zoom - CIRCLE_ZOOM_THRESHOLD) * 2;
+      if (entry.positive) {
+        const marker = L.marker([lat, lng], {
+          icon: getEmojiIcon("🔥", 28),
+          title: loc.name,
+          zIndexOffset: 100,
+        });
+        marker.on("click", () => onLocationClickRef.current(loc));
+        ratedGroupRef.current.addLayer(marker);
+      } else {
         const circle = L.circleMarker([lat, lng], {
-          radius: circleRadius,
+          radius: 6,
           fillColor: "#84cc16",
           fillOpacity: 0.7,
           color: "#facc15",
-          weight: 2,
-        })
-          .addTo(mapRef.current!)
-          .bindPopup(
-            `<div style="font-family: Outfit, sans-serif; font-weight: 600; color: #000;">${escapeHtml(loc.name)}</div>
-             <div style="font-size: 13px; color: #666;">${escapeHtml(loc.category)}</div>`
-          )
-          .on("click", () => onLocationClick(loc));
-
-        markersRef.current.push(circle);
-      });
-    }
-  }, [ratedLocations, unratedLocations, mapState, onLocationClick]);
+          weight: 1.5,
+        });
+        circle.on("click", () => onLocationClickRef.current(loc));
+        ratedGroupRef.current.addLayer(circle);
+      }
+    });
+  }, [locations, ratedLocationIds]);
 
   return <div ref={containerRef} className="h-full w-full" />;
 };

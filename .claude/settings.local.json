@@ -2,7 +2,8 @@
   "permissions": {
     "allow": [
       "Bash(npx tsc:*)",
-      "Bash(vercel:*)"
+      "Bash(vercel:*)",
+      "Bash(wc:*)"
     ]
   }
 }

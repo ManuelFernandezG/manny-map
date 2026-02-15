@@ -2,9 +2,11 @@ import { useState, useEffect, useRef } from "react";
 import { Search, X, Clock, TrendingUp, Sparkles } from "lucide-react";
 import type { Location } from "@/data/mockData";
 import { CATEGORIES } from "@/data/mockData";
+import type { RatedEntry } from "@/lib/userId";
 
 interface LocationSearchProps {
   locations: Location[];
+  ratedLocationIds?: Map<string, RatedEntry>;
   onLocationSelect: (location: Location) => void;
   onCategorySelect?: (category: string) => void;
   placeholder?: string;
@@ -15,6 +17,7 @@ const MAX_RECENT = 1;
 
 const LocationSearch = ({
   locations,
+  ratedLocationIds,
   onLocationSelect,
   onCategorySelect,
   placeholder = "Search locations..."
@@ -135,7 +138,7 @@ const LocationSearch = ({
 
       {/* Suggestions (Recent + Top) */}
       {showSuggestions && (
-        <div className="absolute top-full left-0 right-0 mt-2 rounded-lg bg-card border border-border shadow-xl z-[1001] overflow-hidden">
+        <div className="absolute top-full left-0 right-0 mt-2 rounded-lg bg-card border border-border shadow-xl z-[1100] overflow-hidden">
           {/* Recent Searches */}
           {recentSearches.length > 0 && (
             <div className="border-b border-border">
@@ -194,7 +197,7 @@ const LocationSearch = ({
 
       {/* Search Results */}
       {showResults && (
-        <div className="absolute top-full left-0 right-0 mt-2 rounded-lg bg-card border border-border shadow-xl z-[1001] max-h-96 overflow-y-auto">
+        <div className="absolute top-full left-0 right-0 mt-2 rounded-lg bg-card border border-border shadow-xl z-[1100] max-h-96 overflow-y-auto">
           {filteredResults.map((location) => (
             <button
               key={location.id}
@@ -204,7 +207,7 @@ const LocationSearch = ({
               <div className="flex items-start justify-between gap-2">
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
-                    <span className="text-lg">{location.dominantEmoji}</span>
+                    <span className="text-lg">{ratedLocationIds?.get(location.id)?.emoji || location.dominantEmoji}</span>
                     <h3 className="font-display font-semibold text-foreground truncate group-hover:text-primary">
                       {location.name}
                     </h3>
@@ -226,7 +229,7 @@ const LocationSearch = ({
 
       {/* No Results */}
       {showNoResults && (
-        <div className="absolute top-full left-0 right-0 mt-2 rounded-lg bg-card border border-border shadow-xl z-[1001] px-4 py-3">
+        <div className="absolute top-full left-0 right-0 mt-2 rounded-lg bg-card border border-border shadow-xl z-[1100] px-4 py-3">
           <p className="text-sm text-muted-foreground">No locations found matching "{searchTerm}"</p>
         </div>
       )}

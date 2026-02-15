@@ -1,6 +1,11 @@
-import { X, AlertTriangle, MapPin, Clock } from "lucide-react";
+import { useState } from "react";
+import { X, AlertTriangle, MapPin, Clock, MessageSquare, Send } from "lucide-react";
 import type { Location } from "@/data/mockData";
-import { CATEGORY_COLORS, AGE_GROUPS } from "@/data/mockData";
+import { CATEGORIES, CATEGORY_COLORS, AGE_GROUPS } from "@/data/mockData";
+import { collection, addDoc, serverTimestamp } from "firebase/firestore";
+import { db } from "@/lib/firebase";
+import { getUserId } from "@/lib/userId";
+import { toast } from "sonner";
 
 interface LocationDetailModalProps {
   location: Location;
@@ -10,6 +15,37 @@ interface LocationDetailModalProps {
 }
 
 const LocationDetailModal = ({ location, userAgeGroup, onClose, onRate }: LocationDetailModalProps) => {
+  const [showSuggestion, setShowSuggestion] = useState(false);
+  const [sugName, setSugName] = useState("");
+  const [sugCategory, setSugCategory] = useState("");
+  const [sugMessage, setSugMessage] = useState("");
+  const [sugSending, setSugSending] = useState(false);
+
+  const handleSuggestionSubmit = async () => {
+    if (!sugMessage.trim() && !sugName.trim() && !sugCategory) return;
+    setSugSending(true);
+    try {
+      await addDoc(collection(db, "suggestions"), {
+        locationId: location.id,
+        locationName: location.name,
+        ...(sugName.trim() && { suggestedName: sugName.trim() }),
+        ...(sugCategory && { suggestedCategory: sugCategory }),
+        message: sugMessage.trim(),
+        userId: getUserId(),
+        createdAt: serverTimestamp(),
+      });
+      toast.success("Suggestion sent!");
+      setShowSuggestion(false);
+      setSugName("");
+      setSugCategory("");
+      setSugMessage("");
+    } catch {
+      toast.error("Failed to send suggestion");
+    } finally {
+      setSugSending(false);
+    }
+  };
+
   const categoryClass = CATEGORY_COLORS[location.category] || CATEGORY_COLORS["Other"];
 
   const emojiCounts: Record<string, { emoji: string; word: string; count: number }> = {};
@@ -139,6 +175,63 @@ const LocationDetailModal = ({ location, userAgeGroup, onClose, onRate }: Locati
                 );
               })}
             </div>
+          </div>
+
+          {/* Suggestion box */}
+          <div>
+            {!showSuggestion ? (
+              <button
+                onClick={() => setShowSuggestion(true)}
+                className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+              >
+                <MessageSquare className="h-3.5 w-3.5" />
+                Suggest a change
+              </button>
+            ) : (
+              <div className="rounded-xl bg-surface border border-border p-4 space-y-3">
+                <p className="text-xs font-display font-semibold text-foreground">Suggest a change</p>
+                <input
+                  type="text"
+                  value={sugName}
+                  onChange={(e) => setSugName(e.target.value)}
+                  placeholder="Correct name (optional)"
+                  className="w-full px-3 py-2 rounded-lg bg-background border border-border text-foreground text-sm placeholder:text-muted-foreground focus:outline-none focus:border-primary"
+                />
+                <select
+                  value={sugCategory}
+                  onChange={(e) => setSugCategory(e.target.value)}
+                  className="w-full px-3 py-2 rounded-lg bg-background border border-border text-foreground text-sm"
+                >
+                  <option value="">Correct category (optional)</option>
+                  {CATEGORIES.map((c) => (
+                    <option key={c} value={c}>{c}</option>
+                  ))}
+                </select>
+                <textarea
+                  value={sugMessage}
+                  onChange={(e) => setSugMessage(e.target.value)}
+                  placeholder="What should be changed?"
+                  rows={2}
+                  className="w-full px-3 py-2 rounded-lg bg-background border border-border text-foreground text-sm placeholder:text-muted-foreground focus:outline-none focus:border-primary resize-none"
+                />
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setShowSuggestion(false)}
+                    className="flex-1 py-2 rounded-lg bg-surface-hover text-foreground font-display font-semibold text-xs"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleSuggestionSubmit}
+                    disabled={sugSending || (!sugMessage.trim() && !sugName.trim() && !sugCategory)}
+                    className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg bg-primary text-primary-foreground font-display font-semibold text-xs disabled:opacity-40"
+                  >
+                    <Send className="h-3 w-3" />
+                    Send
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
 
           <button

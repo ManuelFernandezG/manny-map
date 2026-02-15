@@ -61,25 +61,65 @@ export function resetRatingCount(): void {
   }
 }
 
-export function getRatedLocationIds(): Set<string> {
-  if (typeof window === 'undefined') return new Set();
+export interface RatedEntry {
+  emoji: string;
+  positive: boolean;
+  ratedAt: number; // epoch ms
+  phase: "checkin" | "reviewed";
+}
+
+export function getRatedLocationIds(): Map<string, RatedEntry> {
+  if (typeof window === 'undefined') return new Map();
 
   try {
     const raw = localStorage.getItem(RATED_LOCATIONS_KEY);
-    return raw ? new Set(JSON.parse(raw)) : new Set();
+    if (!raw) return new Map();
+    const parsed = JSON.parse(raw);
+
+    // Backward compat: old format was ["id1", "id2"]
+    if (Array.isArray(parsed)) {
+      const map = new Map<string, RatedEntry>();
+      for (const id of parsed) map.set(id, { emoji: '', positive: true, ratedAt: 0, phase: "reviewed" });
+      return map;
+    }
+
+    // Backward compat: v2 format was {"id1": "🍕"}, v3 had no phase
+    const map = new Map<string, RatedEntry>();
+    for (const [id, val] of Object.entries(parsed)) {
+      if (typeof val === 'string') {
+        map.set(id, { emoji: val, positive: true, ratedAt: 0, phase: "reviewed" });
+      } else {
+        const entry = val as RatedEntry;
+        if (!entry.phase) entry.phase = "reviewed";
+        map.set(id, entry);
+      }
+    }
+    return map;
   } catch {
-    return new Set();
+    return new Map();
   }
 }
 
-export function addRatedLocationId(locationId: string): void {
-  if (typeof window === 'undefined') return;
+function saveRatedLocations(map: Map<string, RatedEntry>): void {
+  const obj: Record<string, RatedEntry> = {};
+  map.forEach((v, k) => { obj[k] = v; });
+  localStorage.setItem(RATED_LOCATIONS_KEY, JSON.stringify(obj));
+}
 
+export function addCheckinLocationId(locationId: string): void {
+  if (typeof window === 'undefined') return;
   try {
-    const ids = getRatedLocationIds();
-    ids.add(locationId);
-    localStorage.setItem(RATED_LOCATIONS_KEY, JSON.stringify([...ids]));
-  } catch {
-    // silently fail
-  }
+    const map = getRatedLocationIds();
+    map.set(locationId, { emoji: '', positive: true, ratedAt: Date.now(), phase: "checkin" });
+    saveRatedLocations(map);
+  } catch {}
+}
+
+export function addRatedLocationId(locationId: string, emoji: string, positive: boolean): void {
+  if (typeof window === 'undefined') return;
+  try {
+    const map = getRatedLocationIds();
+    map.set(locationId, { emoji, positive, ratedAt: Date.now(), phase: "reviewed" });
+    saveRatedLocations(map);
+  } catch {}
 }

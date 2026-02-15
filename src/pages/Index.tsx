@@ -1,27 +1,35 @@
 import { useState, useCallback, useMemo, useEffect } from "react";
-import { Flame, Loader, UserPlus } from "lucide-react";
+import { Flame, Loader, User } from "lucide-react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import MapView from "@/components/MapView";
-import CardCarousel from "@/components/CardCarousel";
+import LocationDrawer from "@/components/LocationDrawer";
+import RatedCarousel from "@/components/RatedCarousel";
 import CitySelector from "@/components/CitySelector";
+import CategoryFilter from "@/components/CategoryFilter";
 import LocationSearch from "@/components/LocationSearch";
-import EmojiRatingModal from "@/components/EmojiRatingModal";
+import CheckinModal from "@/components/CheckinModal";
+import ReviewModal from "@/components/ReviewModal";
 import LocationDetailModal from "@/components/LocationDetailModal";
 import CreateLocationModal from "@/components/CreateLocationModal";
 import SignupPrompt from "@/components/SignupPrompt";
-import { CITIES } from "@/data/mockData";
+import { CITIES, CATEGORIES, PHASE_LABELS } from "@/data/mockData";
 import type { Location } from "@/data/mockData";
+import type { CheckinData, ReviewData } from "@/lib/ratings";
 import { toast } from "sonner";
 import { useLocations } from "@/hooks/useLocations";
 import { getRatedLocationIds } from "@/lib/userId";
+import type { RatedEntry } from "@/lib/userId";
 import { collection, addDoc, serverTimestamp } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 
 const Index = () => {
   const [city, setCity] = useState("Ottawa");
-  const [activeIndex, setActiveIndex] = useState(0);
+  const [mapBounds, setMapBounds] = useState<[number, number, number, number] | null>(null);
+  const [ratedActiveIndex, setRatedActiveIndex] = useState(0);
   const [selectedLocation, setSelectedLocation] = useState<Location | null>(null);
-  const [ratingLocation, setRatingLocation] = useState<Location | null>(null);
+  const [checkinLocation, setCheckinLocation] = useState<Location | null>(null);
+  const [reviewLocation, setReviewLocation] = useState<Location | null>(null);
   const [createCoords, setCreateCoords] = useState<{ lat: number; lng: number } | null>(null);
   const [showSignupPrompt, setShowSignupPrompt] = useState(false);
   const [hasSeenSignupPrompt, setHasSeenSignupPrompt] = useState(() => {
@@ -31,23 +39,41 @@ const Index = () => {
       return false;
     }
   });
-  
+
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
 
-  // Track which locations the current user has rated
-  const [ratedLocationIds, setRatedLocationIds] = useState<Set<string>>(() => getRatedLocationIds());
-
-  // Fetch real locations from Firebase (cached per city by React Query)
+  const [activeCategories, setActiveCategories] = useState<Set<string>>(() => new Set(CATEGORIES));
+  const [ratedLocationIds, setRatedLocationIds] = useState<Map<string, RatedEntry>>(() => getRatedLocationIds());
   const { locations, loading, error } = useLocations({ city });
 
-  // Stored age from localStorage
   const [userAgeGroup, setUserAgeGroup] = useState<string | null>(() => {
-    try {
-      return localStorage.getItem("mannymap_age_group");
-    } catch {
-      return null;
-    }
+    try { return localStorage.getItem("mannymap_age_group"); } catch { return null; }
   });
+  const [userGender, setUserGender] = useState<string | null>(() => {
+    try { return localStorage.getItem("mannymap_gender"); } catch { return null; }
+  });
+
+  // Handle deep-link params from Profile (/?review=xxx or /?rate=xxx)
+  useEffect(() => {
+    if (locations.length === 0) return;
+    const reviewId = searchParams.get("review");
+    const rateId = searchParams.get("rate");
+    if (reviewId) {
+      const loc = locations.find((l) => l.id === reviewId);
+      if (loc) {
+        setReviewLocation(loc);
+        setSearchParams({}, { replace: true });
+      }
+    } else if (rateId) {
+      const loc = locations.find((l) => l.id === rateId);
+      if (loc) {
+        handleLocationAction(loc);
+        setSearchParams({}, { replace: true });
+      }
+    }
+  }, [locations, searchParams]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const cityConfig = CITIES[city];
   const cityCenter = useMemo<[number, number]>(
@@ -59,82 +85,145 @@ const Index = () => {
     [locations, city]
   );
 
-  const handleLocationClick = useCallback(
-    (loc: Location) => {
-      const idx = filteredLocations.findIndex((l) => l.id === loc.id);
-      if (idx >= 0) setActiveIndex(idx);
-    },
-    [filteredLocations]
+  const visibleLocations = useMemo(() => {
+    if (!mapBounds) return filteredLocations;
+    const [west, south, east, north] = mapBounds;
+    const centerLat = (south + north) / 2;
+    const centerLng = (west + east) / 2;
+    return filteredLocations
+      .filter((l) => {
+        const { lat, lng } = l.coordinates;
+        return lat >= south && lat <= north && lng >= west && lng <= east;
+      })
+      .sort((a, b) => {
+        const distA = (a.coordinates.lat - centerLat) ** 2 + (a.coordinates.lng - centerLng) ** 2;
+        const distB = (b.coordinates.lat - centerLat) ** 2 + (b.coordinates.lng - centerLng) ** 2;
+        return distA - distB;
+      });
+  }, [filteredLocations, mapBounds]);
+
+  const ratedLocations = useMemo(
+    () => filteredLocations.filter((l) => ratedLocationIds.has(l.id)),
+    [filteredLocations, ratedLocationIds]
   );
 
-  const handleMapClick = useCallback(
-    (lat: number, lng: number) => {
-      // Check if click is near an existing location
-      const nearby = filteredLocations.some(
-        (l) =>
-          Math.abs(l.coordinates.lat - lat) < 0.001 &&
-          Math.abs(l.coordinates.lng - lng) < 0.001
+  const safeRatedIndex = Math.min(ratedActiveIndex, Math.max(0, ratedLocations.length - 1));
+
+  // Helper: determine what action a location needs
+  const getLocationAction = useCallback((loc: Location): "checkin" | "review" => {
+    const entry = ratedLocationIds.get(loc.id);
+    if (entry && entry.phase === "checkin") return "review";
+    return "checkin";
+  }, [ratedLocationIds]);
+
+  // Handle the generic "action" button (Pre/Plans or Afters/Debrief)
+  const handleLocationAction = useCallback((loc: Location) => {
+    const action = getLocationAction(loc);
+    if (action === "review") {
+      setReviewLocation(loc);
+    } else {
+      setCheckinLocation(loc);
+    }
+  }, [getLocationAction]);
+
+  const handleCategoryToggle = useCallback((category: string) => {
+    setActiveCategories((prev) => {
+      const next = new Set(prev);
+      if (next.has(category)) next.delete(category);
+      else next.add(category);
+      return next;
+    });
+  }, []);
+
+  const handleCategoryToggleAll = useCallback(() => {
+    setActiveCategories((prev) =>
+      prev.size === CATEGORIES.length ? new Set<string>() : new Set(CATEGORIES)
+    );
+  }, []);
+
+  const handleLocationClick = useCallback((loc: Location) => {
+    setSelectedLocation(loc);
+  }, []);
+
+  const handleMapClick = useCallback((lat: number, lng: number) => {
+    const nearby = filteredLocations.some(
+      (l) =>
+        Math.abs(l.coordinates.lat - lat) < 0.001 &&
+        Math.abs(l.coordinates.lng - lng) < 0.001
+    );
+    if (!nearby) setCreateCoords({ lat, lng });
+  }, [filteredLocations]);
+
+  // --- Check-in mutation ---
+  const checkinMutation = useMutation({
+    mutationFn: async ({ locationId, data }: { locationId: string; data: CheckinData }) => {
+      const { submitCheckin } = await import("@/lib/ratings");
+      return submitCheckin(locationId, data);
+    },
+    onSuccess: (_result, { data }) => {
+      setUserAgeGroup(data.ageGroup);
+      localStorage.setItem("mannymap_age_group", data.ageGroup);
+      setUserGender(data.gender);
+      localStorage.setItem("mannymap_gender", data.gender);
+      setRatedLocationIds(getRatedLocationIds());
+
+      const labels = PHASE_LABELS[data.gender as keyof typeof PHASE_LABELS];
+      toast.success(
+        data.gender === "Female"
+          ? "Locked in! Debrief after."
+          : "You're set! Come back for afters.",
+        { duration: 3000 }
       );
-      if (!nearby) {
-        setCreateCoords({ lat, lng });
-      }
+      setTimeout(() => setCheckinLocation(null), 1500);
     },
-    [filteredLocations]
-  );
+    onError: () => {
+      toast.error("Failed to check in. Please try again.");
+    },
+  });
 
-  const ratingMutation = useMutation({
-    mutationFn: async ({ locationId, emojiWords, ageGroup }: {
-      locationId: string;
-      emojiWords: { emoji: string; word: string }[];
-      ageGroup: string;
-    }) => {
-      const { submitRating } = await import("@/lib/ratings");
-      return submitRating(locationId, emojiWords, ageGroup);
+  const handleCheckinSubmit = (data: CheckinData) => {
+    if (!checkinLocation) return;
+    checkinMutation.mutate({ locationId: checkinLocation.id, data });
+  };
+
+  // --- Review mutation ---
+  const reviewMutation = useMutation({
+    mutationFn: async ({ locationId, review }: { locationId: string; review: ReviewData }) => {
+      const { submitReview } = await import("@/lib/ratings");
+      return submitReview(locationId, review);
     },
-    onSuccess: (updatedFields, { ageGroup }) => {
-      // Patch only the rated location in the cache (no full refetch)
+    onSuccess: (updatedFields) => {
       queryClient.setQueryData<Location[]>(["locations", city], (old) => {
-        if (!old || !ratingLocation) return old;
+        if (!old || !reviewLocation) return old;
         return old.map((loc) =>
-          loc.id === ratingLocation.id ? { ...loc, ...updatedFields } : loc
+          loc.id === reviewLocation.id ? { ...loc, ...updatedFields } : loc
         );
       });
 
-      setUserAgeGroup(ageGroup);
-      localStorage.setItem("mannymap_age_group", ageGroup);
-
-      // Refresh rated location IDs so the marker updates from gray dot to emoji
       setRatedLocationIds(getRatedLocationIds());
 
       import("@/lib/userId").then(({ incrementRatingCount }) => {
         const newCount = incrementRatingCount();
-        console.log(`✅ User has submitted ${newCount} ratings`);
         if (newCount === 3 && !hasSeenSignupPrompt) {
           setTimeout(() => setShowSignupPrompt(true), 2000);
         }
       });
 
-      toast.success("Rating saved! Swipe to continue.", { duration: 3000 });
-      setTimeout(() => setRatingLocation(null), 1500);
+      const labels = userGender && PHASE_LABELS[userGender as keyof typeof PHASE_LABELS];
+      toast.success(`${labels?.phase2 || "Review"} saved!`, { duration: 3000 });
+      setTimeout(() => setReviewLocation(null), 1500);
     },
-    onError: (error) => {
-      console.error("❌ Error submitting rating:", error);
-      toast.error("Failed to save rating. Please try again.");
+    onError: () => {
+      toast.error("Failed to save review. Please try again.");
     },
   });
 
-  const handleRatingSubmit = (
-    emojiWords: { emoji: string; word: string }[],
-    ageGroup: string
-  ) => {
-    if (!ratingLocation) return;
-    ratingMutation.mutate({
-      locationId: ratingLocation.id,
-      emojiWords,
-      ageGroup,
-    });
+  const handleReviewSubmit = (review: ReviewData) => {
+    if (!reviewLocation) return;
+    reviewMutation.mutate({ locationId: reviewLocation.id, review });
   };
 
+  // --- Create location ---
   const handleCreateLocation = async (data: {
     name: string;
     category: string;
@@ -177,16 +266,15 @@ const Index = () => {
         description: data.description || undefined,
       };
 
-      // Add to React Query cache (no separate state needed)
       queryClient.setQueryData<Location[]>(["locations", city], (old) =>
         old ? [...old, newLoc] : [newLoc]
       );
 
       setCreateCoords(null);
-      toast.success(`${data.name} created! Rate it now.`);
-      setTimeout(() => setRatingLocation(newLoc), 500);
-    } catch (error) {
-      console.error("Error creating location:", error);
+      toast.success(`${data.name} created! Check in now.`);
+      setTimeout(() => setCheckinLocation(newLoc), 500);
+    } catch (err) {
+      console.error("Error creating location:", err);
       toast.error("Failed to create location. Please try again.");
     }
   };
@@ -202,6 +290,7 @@ const Index = () => {
           ratedLocationIds={ratedLocationIds}
           onLocationClick={handleLocationClick}
           onMapClick={handleMapClick}
+          onBoundsChange={setMapBounds}
         />
       </div>
 
@@ -233,65 +322,75 @@ const Index = () => {
       )}
 
       {/* Top bar */}
-      <div className="absolute top-0 left-0 right-0 z-[1000] p-4 space-y-3">
-        <div className="flex items-center justify-between gap-3">
-          <div className="flex items-center gap-2 bg-card/90 backdrop-blur-md rounded-lg px-3 py-2 border border-border">
-            <Flame className="h-5 w-5 text-primary" />
-            <span className="font-display font-bold text-foreground text-lg">Manny Map</span>
+      <div className="absolute top-0 left-0 right-0 z-[1001] p-2 sm:p-4 space-y-2 sm:space-y-3">
+        <div className="flex items-center justify-between gap-1.5 sm:gap-3">
+          <div className="flex items-center gap-1.5 bg-card/90 backdrop-blur-md rounded-lg px-2 py-1.5 sm:px-3 sm:py-2 border border-border">
+            <Flame className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
+            <span className="font-display font-bold text-foreground text-sm sm:text-lg">Manny Map</span>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 sm:gap-2">
             <button
-              onClick={() => setShowSignupPrompt(true)}
-              className="flex items-center gap-2 bg-primary text-primary-foreground rounded-lg px-3 py-2 font-display font-semibold text-sm hover:opacity-90 transition-opacity"
+              onClick={() => navigate("/profile")}
+              className="flex items-center gap-1 sm:gap-2 bg-primary text-primary-foreground rounded-lg px-2 py-1.5 sm:px-3 sm:py-2 font-display font-semibold text-xs sm:text-sm hover:opacity-90 transition-opacity"
             >
-              <UserPlus className="h-4 w-4" />
-              Sign Up
+              <User className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+              Profile
             </button>
             <CitySelector selectedCity={city} onCityChange={setCity} />
           </div>
         </div>
 
-        {/* Search Bar */}
         <div className="flex justify-center">
           <LocationSearch
             locations={filteredLocations}
-            onLocationSelect={(loc) => {
-              setSelectedLocation(loc);
-              const idx = filteredLocations.findIndex((l) => l.id === loc.id);
-              if (idx >= 0) setActiveIndex(idx);
-            }}
+            ratedLocationIds={ratedLocationIds}
+            onLocationSelect={(loc) => setSelectedLocation(loc)}
           />
         </div>
+
+        <CategoryFilter
+          activeCategories={activeCategories}
+          onToggle={handleCategoryToggle}
+          onToggleAll={handleCategoryToggleAll}
+        />
       </div>
 
       {/* Location count badge */}
       {!loading && (
-        <div className="absolute top-32 right-4 z-[999] bg-card/90 backdrop-blur-md rounded-lg px-3 py-2 border border-border">
+        <div className="absolute top-40 right-4 z-[999] bg-card/90 backdrop-blur-md rounded-lg px-3 py-2 border border-border">
           <p className="text-sm font-display font-semibold text-foreground">
-            {filteredLocations.length} spots
+            {visibleLocations.length} of {filteredLocations.length} spots in view
           </p>
         </div>
       )}
 
-      {/* Card carousel at bottom */}
-      <div className="absolute bottom-0 left-0 right-0 z-[1000] pb-6 pt-2">
-        {filteredLocations.length > 0 ? (
-          <CardCarousel
-            locations={filteredLocations}
-            activeIndex={activeIndex}
-            userAgeGroup={userAgeGroup}
+      {/* Rated locations carousel */}
+      {!loading && ratedLocations.length > 0 && (
+        <div className="absolute bottom-[160px] left-0 right-0 z-[999] pb-2">
+          <RatedCarousel
+            locations={ratedLocations}
+            activeIndex={safeRatedIndex}
+            ratedLocationIds={ratedLocationIds}
+            userGender={userGender}
             onLocationTap={(loc) => setSelectedLocation(loc)}
-            onRate={(loc) => setRatingLocation(loc)}
-            onActiveChange={setActiveIndex}
+            onRate={handleLocationAction}
+            onActiveChange={setRatedActiveIndex}
           />
-        ) : (
-          !loading && (
-            <div className="px-6 py-8 text-center">
-              <p className="text-muted-foreground font-display">No locations in this city yet</p>
-            </div>
-          )
-        )}
-      </div>
+        </div>
+      )}
+
+      {/* Location drawer at bottom */}
+      {!loading && (
+        <LocationDrawer
+          locations={visibleLocations}
+          userAgeGroup={userAgeGroup}
+          userGender={userGender}
+          ratedLocationIds={ratedLocationIds}
+          activeCategories={activeCategories}
+          onLocationTap={(loc) => setSelectedLocation(loc)}
+          onAction={handleLocationAction}
+        />
+      )}
 
       {/* Modals */}
       {selectedLocation && (
@@ -300,18 +399,29 @@ const Index = () => {
           userAgeGroup={userAgeGroup}
           onClose={() => setSelectedLocation(null)}
           onRate={() => {
-            setRatingLocation(selectedLocation);
+            const loc = selectedLocation;
             setSelectedLocation(null);
+            handleLocationAction(loc);
           }}
         />
       )}
 
-      {ratingLocation && (
-        <EmojiRatingModal
-          location={ratingLocation}
+      {checkinLocation && (
+        <CheckinModal
+          location={checkinLocation}
           userAgeGroup={userAgeGroup}
-          onSubmit={handleRatingSubmit}
-          onClose={() => setRatingLocation(null)}
+          userGender={userGender}
+          onSubmit={handleCheckinSubmit}
+          onClose={() => setCheckinLocation(null)}
+        />
+      )}
+
+      {reviewLocation && (
+        <ReviewModal
+          location={reviewLocation}
+          userGender={userGender}
+          onSubmit={handleReviewSubmit}
+          onClose={() => setReviewLocation(null)}
         />
       )}
 
@@ -324,30 +434,23 @@ const Index = () => {
         />
       )}
 
-      {/* Signup Prompt */}
       {showSignupPrompt && (
         <SignupPrompt
           onClose={() => {
             setShowSignupPrompt(false);
             setHasSeenSignupPrompt(true);
-            try {
-              localStorage.setItem("mannymap_signup_prompt_seen", "true");
-            } catch {}
+            try { localStorage.setItem("mannymap_signup_prompt_seen", "true"); } catch {}
           }}
           onSignup={() => {
             toast.info("Signup feature coming soon!");
             setShowSignupPrompt(false);
             setHasSeenSignupPrompt(true);
-            try {
-              localStorage.setItem("mannymap_signup_prompt_seen", "true");
-            } catch {}
+            try { localStorage.setItem("mannymap_signup_prompt_seen", "true"); } catch {}
           }}
           onSkip={() => {
             setShowSignupPrompt(false);
             setHasSeenSignupPrompt(true);
-            try {
-              localStorage.setItem("mannymap_signup_prompt_seen", "true");
-            } catch {}
+            try { localStorage.setItem("mannymap_signup_prompt_seen", "true"); } catch {}
           }}
         />
       )}
