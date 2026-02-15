@@ -39,56 +39,49 @@ const RatedCarousel = ({
   return (
     <div className="w-full px-3 sm:px-6">
       <div className="flex items-center gap-2">
-        {/* Previous */}
         <button
           onClick={() => onActiveChange(activeIndex - 1)}
           disabled={activeIndex === 0}
-          className="bg-lime-400 hover:bg-lime-500 disabled:bg-gray-600 disabled:cursor-not-allowed p-1.5 rounded-full transition flex-shrink-0"
+          className="bg-[#2D5F2D] hover:bg-[#3A7A4A] disabled:bg-[#E0E0E0] disabled:cursor-not-allowed p-1.5 rounded-full transition flex-shrink-0"
           aria-label="Previous"
         >
-          <ChevronLeft className="w-4 h-4 text-black" />
+          <ChevronLeft className="w-4 h-4 text-white" />
         </button>
 
-        {/* Card */}
         <button
-          className="flex-1 min-w-0 flex items-center gap-3 rounded-xl bg-card border border-border px-4 py-3 card-shadow text-left transition hover:scale-[1.01]"
+          className="flex-1 min-w-0 flex items-center gap-3 bg-white border border-[#E0E0E0] px-4 py-3 card-shadow text-left transition hover:bg-[#FAFAFA]"
           onClick={() => onLocationTap(loc)}
         >
           <span className="text-3xl flex-shrink-0">{userEmoji}</span>
           <div className="flex-1 min-w-0">
-            <p className="font-display font-bold text-foreground truncate">{loc.name}</p>
+            <p className="font-['Inter'] text-sm font-medium text-black truncate">{loc.name}</p>
             <div className="flex items-center gap-2 mt-0.5">
               <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium ${categoryClass}`}>
                 {loc.category}
               </span>
-              <span className="text-[10px] text-muted-foreground">
+              <span className="text-[10px] text-[#888888]">
                 {loc.totalRatings} ratings
               </span>
             </div>
           </div>
           <button
-            onClick={(e) => {
-              e.stopPropagation();
-              onRate(loc);
-            }}
-            className="px-3 py-1.5 rounded-lg bg-primary text-primary-foreground font-display font-semibold text-xs hover:opacity-90 transition-opacity glow-lime-sm flex-shrink-0"
+            onClick={(e) => { e.stopPropagation(); onRate(loc); }}
+            className="px-3 py-1.5 bg-[#2D5F2D] text-white font-['Inter'] text-xs font-medium hover:opacity-90 transition-opacity flex-shrink-0"
           >
             {getActionLabel(loc.id, ratedLocationIds, userGender)}
           </button>
         </button>
 
-        {/* Next */}
         <button
           onClick={() => onActiveChange(activeIndex + 1)}
           disabled={activeIndex === locations.length - 1}
-          className="bg-lime-400 hover:bg-lime-500 disabled:bg-gray-600 disabled:cursor-not-allowed p-1.5 rounded-full transition flex-shrink-0"
+          className="bg-[#2D5F2D] hover:bg-[#3A7A4A] disabled:bg-[#E0E0E0] disabled:cursor-not-allowed p-1.5 rounded-full transition flex-shrink-0"
           aria-label="Next"
         >
-          <ChevronRight className="w-4 h-4 text-black" />
+          <ChevronRight className="w-4 h-4 text-white" />
         </button>
       </div>
 
-      {/* Dots + counter */}
       {locations.length > 1 && (
         <div className="flex items-center justify-center gap-1.5 mt-2">
           {locations.map((_, i) => (
@@ -96,12 +89,12 @@ const RatedCarousel = ({
               key={i}
               onClick={() => onActiveChange(i)}
               className={`w-1.5 h-1.5 rounded-full transition ${
-                i === activeIndex ? "bg-lime-400" : "bg-gray-600"
+                i === activeIndex ? "bg-[#2D5F2D]" : "bg-[#CCCCCC]"
               }`}
               aria-label={`Go to ${i + 1}`}
             />
           ))}
-          <span className="text-[10px] text-gray-500 ml-1">
+          <span className="text-[10px] text-[#888888] ml-1">
             {activeIndex + 1}/{locations.length}
           </span>
         </div>

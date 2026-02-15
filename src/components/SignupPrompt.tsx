@@ -80,7 +80,7 @@ const SignupPrompt = ({ onClose, onSignup, onSkip }: SignupPromptProps) => {
         <div className="p-6 pt-2 space-y-3">
           <button
             onClick={onSignup}
-            className="w-full py-3.5 rounded-xl bg-primary text-primary-foreground font-display font-bold text-base transition-all hover:opacity-90 glow-lime"
+            className="w-full py-3.5 rounded-xl bg-primary text-primary-foreground font-display font-bold text-base transition-all hover:opacity-90"
           >
             Create Free Account
           </button>

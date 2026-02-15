@@ -348,21 +348,21 @@ const Index = () => {
 
       {/* Loading overlay */}
       {loading && (
-        <div className="absolute inset-0 z-[500] flex items-center justify-center bg-[#1A3A2A]/30 backdrop-blur-[2px]">
-          <div className="flex flex-col items-center gap-3 bg-[#1A3A2A]/95 backdrop-blur-md px-6 py-4 border border-[#2D5F2D]">
-            <Loader className="h-6 w-6 text-[#8FBF8F] animate-spin" />
-            <p className="text-white font-['DM_Sans'] font-medium text-sm">Loading locations...</p>
+        <div className="absolute inset-0 z-[500] flex items-center justify-center bg-white/30 backdrop-blur-[2px]">
+          <div className="flex flex-col items-center gap-3 bg-white/95 backdrop-blur-md px-6 py-4 border border-[#E0E0E0] card-shadow">
+            <Loader className="h-6 w-6 text-[#2D5F2D] animate-spin" />
+            <p className="text-[#333333] font-['Inter'] font-medium text-sm">Loading locations...</p>
           </div>
         </div>
       )}
 
       {/* Error banner — non-blocking */}
       {error && !loading && (
-        <div className="absolute bottom-16 left-4 right-4 z-[999] flex items-center justify-between gap-3 bg-[#1A3A2A]/95 backdrop-blur-md px-4 py-3 border border-[#2D5F2D]">
-          <p className="text-sm text-[#C5DFC5] font-['DM_Sans'] truncate">{error}</p>
+        <div className="absolute bottom-16 left-4 right-4 z-[999] flex items-center justify-between gap-3 bg-white/95 backdrop-blur-md px-4 py-3 border border-[#E0E0E0] card-shadow">
+          <p className="text-sm text-[#333333] font-['Inter'] truncate">{error}</p>
           <button
             onClick={() => window.location.reload()}
-            className="shrink-0 px-3 py-1.5 bg-[#2D5F2D] text-white text-sm font-['DM_Sans'] font-medium hover:bg-[#3A7A4A] transition-colors"
+            className="shrink-0 px-3 py-1.5 bg-[#2D5F2D] text-white text-sm font-['Inter'] font-medium hover:opacity-90 transition-opacity"
           >
             Retry
           </button>
@@ -372,8 +372,8 @@ const Index = () => {
       {/* Top bar */}
       <div className="absolute top-0 left-0 right-0 z-[1001] p-2 sm:p-4 space-y-2 sm:space-y-3">
         <div className="flex items-center justify-between gap-1.5 sm:gap-3">
-          <div className="flex items-center gap-1.5 bg-[#1A3A2A]/95 backdrop-blur-md px-2 py-1.5 sm:px-3 sm:py-2 border border-[#2D5F2D]">
-            <span className="font-['DM_Sans'] font-medium text-[#8FBF8F] text-sm sm:text-lg">Manny Map</span>
+          <div className="flex items-center gap-1.5 bg-white/95 backdrop-blur-md px-2 py-1.5 sm:px-3 sm:py-2 border border-[#E0E0E0] card-shadow">
+            <span className="font-['DM_Sans'] font-medium text-[#2D5F2D] text-sm sm:text-lg">Manny Map</span>
           </div>
           <CitySelector selectedCity={city} onCityChange={setCity} />
         </div>
@@ -396,8 +396,8 @@ const Index = () => {
 
       {/* Location count badge */}
       {!loading && (
-        <div className="absolute top-40 right-4 z-[999] bg-[#1A3A2A]/95 backdrop-blur-md px-3 py-2 border border-[#2D5F2D]">
-          <p className="text-sm font-['DM_Sans'] font-medium text-[#C5DFC5]">
+        <div className="absolute top-40 right-4 z-[999] bg-white/95 backdrop-blur-md px-3 py-2 border border-[#E0E0E0] card-shadow">
+          <p className="text-sm font-['Inter'] font-medium text-[#333333]">
             {visibleLocations.length} of {inViewLocations.length} spots in view
           </p>
         </div>

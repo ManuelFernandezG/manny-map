@@ -236,7 +236,7 @@ const LocationDetailModal = ({ location, userAgeGroup, onClose, onRate }: Locati
 
           <button
             onClick={onRate}
-            className="w-full py-3.5 rounded-xl bg-primary text-primary-foreground font-display font-bold text-base hover:opacity-90 transition-opacity glow-lime"
+            className="w-full py-3.5 rounded-xl bg-primary text-primary-foreground font-display font-bold text-base hover:opacity-90 transition-opacity"
           >
             Rate this spot
           </button>

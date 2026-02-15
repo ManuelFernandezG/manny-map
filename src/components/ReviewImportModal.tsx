@@ -175,7 +175,7 @@ const ReviewImportModal = ({ location, onClose, onImported }: ReviewImportModalP
           <button
             onClick={handleAdd}
             disabled={!allDimensionsFilled || submitting}
-            className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl bg-primary text-primary-foreground font-display font-bold text-base transition-all disabled:opacity-40 disabled:cursor-not-allowed hover:opacity-90 glow-lime"
+            className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl bg-primary text-primary-foreground font-display font-bold text-base transition-all disabled:opacity-40 disabled:cursor-not-allowed hover:opacity-90"
           >
             <Plus className="h-5 w-5" />
             Add Review #{importCount + 1}
