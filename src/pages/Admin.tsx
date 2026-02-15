@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Lock, MapPin, TrendingUp, Users, Upload, Pencil, Check, X, MessageSquare, Plus } from "lucide-react";
-import { collection, getDocs, updateDoc, doc, deleteDoc } from "firebase/firestore";
+import { collection, getDocs, updateDoc, doc, deleteDoc } from "firebase/firestore/lite";
 import { db } from "@/lib/firebase";
 import { CATEGORIES } from "@/data/mockData";
 import type { Location } from "@/data/mockData";

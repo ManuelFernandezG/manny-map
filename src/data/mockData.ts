@@ -31,6 +31,15 @@ export interface Location {
   averageScore?: number;
   ratingsByGender?: Record<string, AgeGroupData>;
   checkinCount?: number;
+  recentTrendsLast7d?: RecentTrendsLast7d;
+}
+
+export interface RecentTrendsLast7d {
+  avgScore: number;
+  dominantEmoji: string;
+  ratingCount: number;
+  topCompanion: string | null;
+  updatedAt?: unknown;
 }
 
 // --- Categories ---

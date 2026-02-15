@@ -8,7 +8,7 @@ import {
   GENDERS,
 } from "@/data/mockData";
 import type { Location, CategoryGroup, ReviewEmoji } from "@/data/mockData";
-import { collection, addDoc, updateDoc, doc, serverTimestamp } from "firebase/firestore";
+import { collection, addDoc, updateDoc, doc, serverTimestamp } from "firebase/firestore/lite";
 import { db } from "@/lib/firebase";
 import { toast } from "sonner";
 

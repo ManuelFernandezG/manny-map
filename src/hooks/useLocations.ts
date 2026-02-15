@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { collection, getDocs, query, where } from "firebase/firestore";
+import { collection, getDocs, query, where } from "firebase/firestore/lite";
 import { db } from "@/lib/firebase";
 import type { Location } from "@/data/mockData";
 
@@ -58,6 +58,7 @@ async function fetchLocationsByCity(city: string): Promise<Location[]> {
       divergenceFlagged: data.divergenceFlagged || false,
       dominantEmoji: data.dominantEmoji || "🔥",
       dominantWord: data.dominantWord || "New",
+      recentTrendsLast7d: data.recentTrendsLast7d ?? undefined,
     };
 
     fetchedLocations.push(location);

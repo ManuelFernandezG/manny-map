@@ -3,7 +3,8 @@
     "allow": [
       "Bash(npx tsc:*)",
       "Bash(vercel:*)",
-      "Bash(wc:*)"
+      "Bash(wc:*)",
+      "Bash(npm uninstall:*)"
     ]
   }
 }

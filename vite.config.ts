@@ -17,4 +17,15 @@ export default defineConfig({
       "@": path.resolve(__dirname, "./src"),
     },
   },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          // Split heavy vendor libs into separate cacheable chunks
+          firebase: ["firebase/app", "firebase/firestore/lite"],
+          leaflet: ["leaflet", "leaflet.heat"],
+        },
+      },
+    },
+  },
 });

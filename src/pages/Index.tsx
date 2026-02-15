@@ -1,18 +1,10 @@
-import { useState, useCallback, useMemo, useEffect } from "react";
+import { useState, useCallback, useMemo, useEffect, lazy, Suspense } from "react";
 import { Flame, Loader, User } from "lucide-react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import MapView from "@/components/MapView";
-import LocationDrawer from "@/components/LocationDrawer";
-import RatedCarousel from "@/components/RatedCarousel";
 import CitySelector from "@/components/CitySelector";
 import CategoryFilter from "@/components/CategoryFilter";
 import LocationSearch from "@/components/LocationSearch";
-import CheckinModal from "@/components/CheckinModal";
-import ReviewModal from "@/components/ReviewModal";
-import LocationDetailModal from "@/components/LocationDetailModal";
-import CreateLocationModal from "@/components/CreateLocationModal";
-import SignupPrompt from "@/components/SignupPrompt";
 import { CITIES, CATEGORIES, CATEGORY_GROUPS, PHASE_LABELS } from "@/data/mockData";
 import type { Location } from "@/data/mockData";
 import type { CheckinData, ReviewData } from "@/lib/ratings";
@@ -20,8 +12,16 @@ import { toast } from "sonner";
 import { useLocations } from "@/hooks/useLocations";
 import { getRatedLocationIds } from "@/lib/userId";
 import type { RatedEntry } from "@/lib/userId";
-import { collection, addDoc, serverTimestamp } from "firebase/firestore";
-import { db } from "@/lib/firebase";
+
+// Lazy-load heavy components that aren't needed for first paint
+const MapView = lazy(() => import("@/components/MapView"));
+const LocationDrawer = lazy(() => import("@/components/LocationDrawer"));
+const RatedCarousel = lazy(() => import("@/components/RatedCarousel"));
+const CheckinModal = lazy(() => import("@/components/CheckinModal"));
+const ReviewModal = lazy(() => import("@/components/ReviewModal"));
+const LocationDetailModal = lazy(() => import("@/components/LocationDetailModal"));
+const CreateLocationModal = lazy(() => import("@/components/CreateLocationModal"));
+const SignupPrompt = lazy(() => import("@/components/SignupPrompt"));
 
 const Index = () => {
   const [city, setCity] = useState("Ottawa");
@@ -227,13 +227,21 @@ const Index = () => {
       const { submitReview } = await import("@/lib/ratings");
       return submitReview(locationId, review);
     },
-    onSuccess: (updatedFields) => {
+    onSuccess: () => {
+      // Optimistic update: bump totalRatings so list feels instant
       queryClient.setQueryData<Location[]>(["locations", city], (old) => {
         if (!old || !reviewLocation) return old;
         return old.map((loc) =>
-          loc.id === reviewLocation.id ? { ...loc, ...updatedFields } : loc
+          loc.id === reviewLocation.id
+            ? { ...loc, totalRatings: loc.totalRatings + 1 }
+            : loc
         );
       });
+      queryClient.invalidateQueries({ queryKey: ["locations", city] });
+      // Delayed refetch so Firestore trigger has time to run and we get fresh aggregates
+      setTimeout(() => {
+        queryClient.refetchQueries({ queryKey: ["locations", city] });
+      }, 1800);
 
       setRatedLocationIds(getRatedLocationIds());
 
@@ -271,6 +279,9 @@ const Index = () => {
       toast.error("Invalid coordinates.");
       return;
     }
+
+    const { collection, addDoc, serverTimestamp } = await import("firebase/firestore/lite");
+    const { db } = await import("@/lib/firebase");
 
     const locationData = {
       name: data.name,
@@ -318,24 +329,25 @@ const Index = () => {
     <div className="h-screen w-screen overflow-hidden relative bg-background">
       {/* Map */}
       <div className="absolute inset-0">
-        <MapView
-          locations={locationsForMap}
-          center={cityCenter}
-          zoom={cityConfig.zoom}
-          ratedLocationIds={ratedLocationIds}
-          onLocationClick={handleLocationClick}
-          onMapClick={handleMapClick}
-          onBoundsChange={setMapBounds}
-        />
+        <Suspense fallback={<div className="h-full w-full bg-muted animate-pulse" />}>
+          <MapView
+            locations={locationsForMap}
+            center={cityCenter}
+            zoom={cityConfig.zoom}
+            ratedLocationIds={ratedLocationIds}
+            onLocationClick={handleLocationClick}
+            onMapClick={handleMapClick}
+            onBoundsChange={setMapBounds}
+          />
+        </Suspense>
       </div>
 
-      {/* Loading overlay */}
+      {/* Loading overlay — translucent so the map shell is visible underneath */}
       {loading && (
-        <div className="absolute inset-0 z-[500] flex items-center justify-center bg-background/50 backdrop-blur-sm">
-          <div className="flex flex-col items-center gap-3">
-            <Loader className="h-8 w-8 text-primary animate-spin" />
-            <p className="text-foreground font-display font-semibold">Loading locations...</p>
-            <p className="text-sm text-muted-foreground">Fetching data from Firebase</p>
+        <div className="absolute inset-0 z-[500] flex items-center justify-center bg-background/30 backdrop-blur-[2px]">
+          <div className="flex flex-col items-center gap-3 bg-card/90 rounded-xl px-6 py-4 border border-border">
+            <Loader className="h-6 w-6 text-primary animate-spin" />
+            <p className="text-foreground font-display font-semibold text-sm">Loading locations...</p>
           </div>
         </div>
       )}
@@ -403,93 +415,99 @@ const Index = () => {
       {/* Rated locations carousel */}
       {!loading && ratedLocations.length > 0 && (
         <div className="absolute bottom-[160px] left-0 right-0 z-[999] pb-2">
-          <RatedCarousel
-            locations={ratedLocations}
-            activeIndex={safeRatedIndex}
-            ratedLocationIds={ratedLocationIds}
-            userGender={userGender}
-            onLocationTap={(loc) => setSelectedLocation(loc)}
-            onRate={handleLocationAction}
-            onActiveChange={setRatedActiveIndex}
-          />
+          <Suspense fallback={null}>
+            <RatedCarousel
+              locations={ratedLocations}
+              activeIndex={safeRatedIndex}
+              ratedLocationIds={ratedLocationIds}
+              userGender={userGender}
+              onLocationTap={(loc) => setSelectedLocation(loc)}
+              onRate={handleLocationAction}
+              onActiveChange={setRatedActiveIndex}
+            />
+          </Suspense>
         </div>
       )}
 
       {/* Location drawer at bottom */}
       {!loading && (
-        <LocationDrawer
-          locations={visibleLocations}
-          userAgeGroup={userAgeGroup}
-          userGender={userGender}
-          ratedLocationIds={ratedLocationIds}
-          activeCategories={activeCategories}
-          onLocationTap={(loc) => setSelectedLocation(loc)}
-          onAction={handleLocationAction}
-        />
+        <Suspense fallback={null}>
+          <LocationDrawer
+            locations={visibleLocations}
+            userAgeGroup={userAgeGroup}
+            userGender={userGender}
+            ratedLocationIds={ratedLocationIds}
+            activeCategories={activeCategories}
+            onLocationTap={(loc) => setSelectedLocation(loc)}
+            onAction={handleLocationAction}
+          />
+        </Suspense>
       )}
 
-      {/* Modals */}
-      {selectedLocation && (
-        <LocationDetailModal
-          location={selectedLocation}
-          userAgeGroup={userAgeGroup}
-          onClose={() => setSelectedLocation(null)}
-          onRate={() => {
-            const loc = selectedLocation;
-            setSelectedLocation(null);
-            handleLocationAction(loc);
-          }}
-        />
-      )}
+      {/* Modals — each wrapped in Suspense since they're lazy-loaded */}
+      <Suspense fallback={null}>
+        {selectedLocation && (
+          <LocationDetailModal
+            location={selectedLocation}
+            userAgeGroup={userAgeGroup}
+            onClose={() => setSelectedLocation(null)}
+            onRate={() => {
+              const loc = selectedLocation;
+              setSelectedLocation(null);
+              handleLocationAction(loc);
+            }}
+          />
+        )}
 
-      {checkinLocation && (
-        <CheckinModal
-          location={checkinLocation}
-          userAgeGroup={userAgeGroup}
-          userGender={userGender}
-          onSubmit={handleCheckinSubmit}
-          onClose={() => setCheckinLocation(null)}
-        />
-      )}
+        {checkinLocation && (
+          <CheckinModal
+            location={checkinLocation}
+            userAgeGroup={userAgeGroup}
+            userGender={userGender}
+            onSubmit={handleCheckinSubmit}
+            onClose={() => setCheckinLocation(null)}
+          />
+        )}
 
-      {reviewLocation && (
-        <ReviewModal
-          location={reviewLocation}
-          userGender={userGender}
-          onSubmit={handleReviewSubmit}
-          onClose={() => setReviewLocation(null)}
-        />
-      )}
+        {reviewLocation && (
+          <ReviewModal
+            location={reviewLocation}
+            userGender={userGender}
+            onSubmit={handleReviewSubmit}
+            onClose={() => setReviewLocation(null)}
+          />
+        )}
 
-      {createCoords && (
-        <CreateLocationModal
-          lat={createCoords.lat}
-          lng={createCoords.lng}
-          onSubmit={handleCreateLocation}
-          onClose={() => setCreateCoords(null)}
-        />
-      )}
+        {createCoords && (
+          <CreateLocationModal
+            lat={createCoords.lat}
+            lng={createCoords.lng}
+            onSubmit={handleCreateLocation}
+            onClose={() => setCreateCoords(null)}
+          />
+        )}
 
-      {showSignupPrompt && (
-        <SignupPrompt
-          onClose={() => {
-            setShowSignupPrompt(false);
-            setHasSeenSignupPrompt(true);
-            try { localStorage.setItem("mannymap_signup_prompt_seen", "true"); } catch {}
-          }}
-          onSignup={() => {
-            toast.info("Signup feature coming soon!");
-            setShowSignupPrompt(false);
-            setHasSeenSignupPrompt(true);
-            try { localStorage.setItem("mannymap_signup_prompt_seen", "true"); } catch {}
-          }}
-          onSkip={() => {
-            setShowSignupPrompt(false);
-            setHasSeenSignupPrompt(true);
-            try { localStorage.setItem("mannymap_signup_prompt_seen", "true"); } catch {}
-          }}
-        />
-      )}
+        {showSignupPrompt && (
+          <SignupPrompt
+            onClose={() => {
+              setShowSignupPrompt(false);
+              setHasSeenSignupPrompt(true);
+              try { localStorage.setItem("mannymap_signup_prompt_seen", "true"); } catch {}
+            }}
+            onSignup={() => {
+              toast.info("Signup feature coming soon!");
+              setShowSignupPrompt(false);
+              setHasSeenSignupPrompt(true);
+              try { localStorage.setItem("mannymap_signup_prompt_seen", "true"); } catch {}
+            }}
+            onSkip={() => {
+              setShowSignupPrompt(false);
+              setHasSeenSignupPrompt(true);
+              try { localStorage.setItem("mannymap_signup_prompt_seen", "true"); } catch {}
+            }}
+          />
+        )}
+      </Suspense>
     </div>
   );
 };

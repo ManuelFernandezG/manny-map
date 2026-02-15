@@ -7,7 +7,7 @@ import {
   query,
   where,
   serverTimestamp,
-} from 'firebase/firestore';
+} from 'firebase/firestore/lite';
 import { db } from './firebase';
 import type { AgeGroupData, EmojiWord } from '@/data/mockData';
 import { AGE_GROUPS, GENDERS, REVIEW_CONFIG, POSITIVE_EMOJIS, CATEGORY_GROUPS } from '@/data/mockData';
@@ -101,14 +101,7 @@ export async function submitCheckin(
 
   await addDoc(ratingsRef, ratingDoc);
   addCheckinLocationId(locationId);
-
-  // Update checkin count on location
-  const locationRef = doc(db, 'locations', locationId);
-  const allRatings = await getDocs(collection(db, `locations/${locationId}/ratings`));
-  const checkinCount = allRatings.docs.filter(
-    (d) => d.data().phase === "checkin"
-  ).length;
-  await updateDoc(locationRef, { checkinCount });
+  // Location aggregates (including checkinCount) are updated by the Firestore trigger on ratings
 }
 
 // --- Submit Review (Phase 2) ---
@@ -124,7 +117,7 @@ export interface ReviewData {
 export async function submitReview(
   locationId: string,
   review: ReviewData
-): Promise<AggregatedFields> {
+): Promise<{ success: true }> {
   const userId = getUserId();
   const ratingsRef = collection(db, `locations/${locationId}/ratings`);
 
@@ -170,7 +163,8 @@ export async function submitReview(
     addRatedLocationId(locationId, primary.emoji, POSITIVE_EMOJIS.has(primary.emoji));
   }
 
-  return await aggregateRatings(locationId);
+  // Aggregation is done by the Firestore trigger; client refetches locations after a short delay
+  return { success: true };
 }
 
 // --- Aggregation ---
@@ -331,7 +325,22 @@ export interface RecentTrends {
   topCompanion: string | null;
 }
 
-export async function getRecentTrends(locationId: string): Promise<RecentTrends> {
+/** Cached trends from location doc (avoids reading ratings subcollection when present). */
+export type CachedTrends = { recentTrendsLast7d?: { avgScore: number; dominantEmoji: string; ratingCount: number; topCompanion: string | null } };
+
+export async function getRecentTrends(
+  locationId: string,
+  cached?: CachedTrends | null
+): Promise<RecentTrends> {
+  if (cached?.recentTrendsLast7d) {
+    const t = cached.recentTrendsLast7d;
+    return {
+      avgScore: t.avgScore,
+      dominantEmoji: t.dominantEmoji,
+      ratingCount: t.ratingCount,
+      topCompanion: t.topCompanion ?? null,
+    };
+  }
   try {
     const ratingsRef = collection(db, `locations/${locationId}/ratings`);
     const snap = await getDocs(ratingsRef);

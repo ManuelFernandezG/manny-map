@@ -2,7 +2,7 @@ import { useState } from "react";
 import { X, AlertTriangle, MapPin, Clock, MessageSquare, Send } from "lucide-react";
 import type { Location } from "@/data/mockData";
 import { CATEGORIES, CATEGORY_COLORS, AGE_GROUPS } from "@/data/mockData";
-import { collection, addDoc, serverTimestamp } from "firebase/firestore";
+import { collection, addDoc, serverTimestamp } from "firebase/firestore/lite";
 import { db } from "@/lib/firebase";
 import { getUserId } from "@/lib/userId";
 import { toast } from "sonner";

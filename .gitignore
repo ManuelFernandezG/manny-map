@@ -35,3 +35,6 @@ docs/
 
 # Firebase service account (never commit)
 scripts/serviceAccountKey.json
+
+# Firebase Functions build output
+functions/lib

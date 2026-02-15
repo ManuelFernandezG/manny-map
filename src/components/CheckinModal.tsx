@@ -43,12 +43,12 @@ const CheckinModal = ({
   const needsGenderGate = !userGender;
   const isSolo = groupSize === "Solo";
 
-  // Fetch recent trends
+  // Fetch recent trends (use cached location.recentTrendsLast7d when present)
   useEffect(() => {
     import("@/lib/ratings").then(({ getRecentTrends }) => {
-      getRecentTrends(location.id).then(setTrends);
+      getRecentTrends(location.id, location).then(setTrends);
     });
-  }, [location.id]);
+  }, [location.id, location]);
 
   const canSubmit = ageGroup && gender && travelTime && groupSize && (isSolo || companion);
 
