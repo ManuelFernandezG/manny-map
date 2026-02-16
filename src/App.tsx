@@ -8,7 +8,7 @@ import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 
 const Profile = lazy(() => import("./pages/Profile"));
-const Dashboard = lazy(() => import("./pages/ratings"));
+const Dashboard = lazy(() => import("./pages/Ratings"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
