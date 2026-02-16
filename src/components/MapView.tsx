@@ -118,15 +118,27 @@ const MapView = ({
       const entry = ratedLocationIds.get(loc.id);
       const isRated = !!entry;
 
-      const circle = L.circleMarker([lat, lng], {
-        radius: isRated ? 7 : 5,
-        fillColor: isRated ? "#8FBF8F" : "#84cc16",
-        fillOpacity: isRated ? 0.9 : 0.5,
-        color: isRated ? "#C5DFC5" : "#2D5F2D",
-        weight: isRated ? 2 : 1,
+      // Layer 1: outer white halo (visibility on satellite)
+      const halo = L.circleMarker([lat, lng], {
+        radius: 9,
+        fillColor: "#FFFFFF",
+        fillOpacity: 0.85,
+        color: "#FFFFFF",
+        weight: 1,
       });
-      circle.on("click", () => onLocationClickRef.current(loc));
-      markersGroupRef.current.addLayer(circle);
+      halo.on("click", () => onLocationClickRef.current(loc));
+      markersGroupRef.current.addLayer(halo);
+
+      // Layer 2: inner colored fill (rated vs unrated)
+      const fill = L.circleMarker([lat, lng], {
+        radius: 5,
+        fillColor: isRated ? "#22c55e" : "#84cc16",
+        fillOpacity: 1,
+        color: "#166534",
+        weight: 1.5,
+      });
+      fill.on("click", () => onLocationClickRef.current(loc));
+      markersGroupRef.current.addLayer(fill);
     });
   }, [locations, ratedLocationIds]);
 

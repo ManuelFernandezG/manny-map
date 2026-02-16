@@ -11,7 +11,7 @@ import { CITIES, CATEGORIES, CATEGORY_GROUPS, PHASE_LABELS } from "@/data/mockDa
 import type { Location } from "@/data/mockData";
 import type { CheckinData, ReviewData } from "@/lib/ratings";
 import { toast } from "sonner";
-import { useLocations } from "@/hooks/useLocations";
+import { useLocations, LOCATIONS_QUERY_VERSION } from "@/hooks/useLocations";
 import { getRatedLocationIds } from "@/lib/userId";
 import type { RatedEntry } from "@/lib/userId";
 
@@ -231,7 +231,7 @@ const Index = () => {
     },
     onSuccess: () => {
       // Optimistic update: bump totalRatings so list feels instant
-      queryClient.setQueryData<Location[]>(["locations", city], (old) => {
+      queryClient.setQueryData<Location[]>(["locations", LOCATIONS_QUERY_VERSION, city], (old) => {
         if (!old || !reviewLocation) return old;
         return old.map((loc) =>
           loc.id === reviewLocation.id
@@ -239,10 +239,10 @@ const Index = () => {
             : loc
         );
       });
-      queryClient.invalidateQueries({ queryKey: ["locations", city] });
+      queryClient.invalidateQueries({ queryKey: ["locations", LOCATIONS_QUERY_VERSION, city] });
       // Delayed refetch so Firestore trigger has time to run and we get fresh aggregates
       setTimeout(() => {
-        queryClient.refetchQueries({ queryKey: ["locations", city] });
+        queryClient.refetchQueries({ queryKey: ["locations", LOCATIONS_QUERY_VERSION, city] });
       }, 1800);
 
       setRatedLocationIds(getRatedLocationIds());
@@ -314,7 +314,7 @@ const Index = () => {
         description: data.description || undefined,
       };
 
-      queryClient.setQueryData<Location[]>(["locations", city], (old) =>
+      queryClient.setQueryData<Location[]>(["locations", LOCATIONS_QUERY_VERSION, city], (old) =>
         old ? [...old, newLoc] : [newLoc]
       );
 
