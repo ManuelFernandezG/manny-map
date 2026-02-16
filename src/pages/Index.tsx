@@ -21,7 +21,6 @@ const RatedCarousel = lazy(() => import("@/components/RatedCarousel"));
 const CheckinModal = lazy(() => import("@/components/CheckinModal"));
 const ReviewModal = lazy(() => import("@/components/ReviewModal"));
 const LocationDetailModal = lazy(() => import("@/components/LocationDetailModal"));
-const CreateLocationModal = lazy(() => import("@/components/CreateLocationModal"));
 const SignupPrompt = lazy(() => import("@/components/SignupPrompt"));
 
 const Index = () => {
@@ -31,7 +30,6 @@ const Index = () => {
   const [selectedLocation, setSelectedLocation] = useState<Location | null>(null);
   const [checkinLocation, setCheckinLocation] = useState<Location | null>(null);
   const [reviewLocation, setReviewLocation] = useState<Location | null>(null);
-  const [createCoords, setCreateCoords] = useState<{ lat: number; lng: number } | null>(null);
   const [showSignupPrompt, setShowSignupPrompt] = useState(false);
   const [hasSeenSignupPrompt, setHasSeenSignupPrompt] = useState(() => {
     try {
@@ -182,14 +180,9 @@ const Index = () => {
     setSelectedLocation(loc);
   }, []);
 
-  const handleMapClick = useCallback((lat: number, lng: number) => {
-    const nearby = filteredLocations.some(
-      (l) =>
-        Math.abs(l.coordinates.lat - lat) < 0.001 &&
-        Math.abs(l.coordinates.lng - lng) < 0.001
-    );
-    if (!nearby) setCreateCoords({ lat, lng });
-  }, [filteredLocations]);
+  const handleMapClick = useCallback((_lat: number, _lng: number) => {
+    // Map click no longer opens create-location (non-review Firestore writes removed)
+  }, []);
 
   // --- Check-in mutation ---
   const checkinMutation = useMutation({
@@ -268,69 +261,10 @@ const Index = () => {
     reviewMutation.mutate({ locationId: reviewLocation.id, review });
   };
 
-  // --- Create location ---
-  const handleCreateLocation = async (data: {
-    name: string;
-    category: string;
-    address: string;
-    hours: string;
-    description: string;
-  }) => {
-    if (!createCoords) return;
-    if (createCoords.lat < -90 || createCoords.lat > 90 || createCoords.lng < -180 || createCoords.lng > 180) {
-      toast.error("Invalid coordinates.");
-      return;
-    }
-
-    const { collection, addDoc, serverTimestamp } = await import("firebase/firestore/lite");
-    const { db } = await import("@/lib/firebase");
-
-    const locationData = {
-      name: data.name,
-      category: data.category,
-      address: data.address,
-      neighborhood: "",
-      city,
-      coordinates: createCoords,
-      hours: data.hours || "",
-      description: data.description || "",
-      isUserCreated: true,
-      isPending: true,
-      totalRatings: 0,
-      ratingsByAgeGroup: {},
-      divergenceScore: 0,
-      divergenceFlagged: false,
-      dominantEmoji: "📍",
-      dominantWord: "New",
-      createdAt: serverTimestamp(),
-    };
-
-    try {
-      const docRef = await addDoc(collection(db, "locations"), locationData);
-      const newLoc: Location = {
-        id: docRef.id,
-        ...locationData,
-        hours: data.hours || undefined,
-        description: data.description || undefined,
-      };
-
-      queryClient.setQueryData<Location[]>(["locations", LOCATIONS_QUERY_VERSION, city], (old) =>
-        old ? [...old, newLoc] : [newLoc]
-      );
-
-      setCreateCoords(null);
-      toast.success(`${data.name} created! Check in now.`);
-      setTimeout(() => setCheckinLocation(newLoc), 500);
-    } catch (err) {
-      console.error("Error creating location:", err);
-      toast.error("Failed to create location. Please try again.");
-    }
-  };
-
   return (
-    <div className="flex h-screen w-screen overflow-hidden bg-background">
+    <div className="flex h-screen min-h-[100dvh] w-full max-w-[100vw] overflow-x-hidden overflow-y-hidden bg-background">
       <Sidebar />
-      <div className="relative flex-1 overflow-hidden">
+      <div className="relative min-w-0 flex-1 overflow-hidden">
       {/* Map */}
       <div className="absolute inset-0">
         <Suspense fallback={<div className="h-full w-full bg-muted animate-pulse" />}>
@@ -440,15 +374,6 @@ const Index = () => {
             userGender={userGender}
             onSubmit={handleReviewSubmit}
             onClose={() => setReviewLocation(null)}
-          />
-        )}
-
-        {createCoords && (
-          <CreateLocationModal
-            lat={createCoords.lat}
-            lng={createCoords.lng}
-            onSubmit={handleCreateLocation}
-            onClose={() => setCreateCoords(null)}
           />
         )}
 

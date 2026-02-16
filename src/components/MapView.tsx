@@ -115,8 +115,6 @@ const MapView = ({
 
     locations.forEach((loc) => {
       const { lat, lng } = loc.coordinates;
-      const entry = ratedLocationIds.get(loc.id);
-      const isRated = !!entry;
 
       // Layer 1: outer white halo (visibility on satellite)
       const halo = L.circleMarker([lat, lng], {
@@ -129,10 +127,10 @@ const MapView = ({
       halo.on("click", () => onLocationClickRef.current(loc));
       markersGroupRef.current.addLayer(halo);
 
-      // Layer 2: inner colored fill (rated vs unrated)
+      // Layer 2: inner colored fill (same green for all markers)
       const fill = L.circleMarker([lat, lng], {
         radius: 5,
-        fillColor: isRated ? "#22c55e" : "#84cc16",
+        fillColor: "#84cc16",
         fillOpacity: 1,
         color: "#166534",
         weight: 1.5,
@@ -140,7 +138,7 @@ const MapView = ({
       fill.on("click", () => onLocationClickRef.current(loc));
       markersGroupRef.current.addLayer(fill);
     });
-  }, [locations, ratedLocationIds]);
+  }, [locations]);
 
   return <div ref={containerRef} className="h-full w-full" />;
 };

@@ -73,10 +73,10 @@ const Dashboard = () => {
             {METRICS.map((m) => (
               <div key={m.label} className="flex flex-col gap-3 md:gap-5 bg-white p-5 md:p-7">
                 <span className="font-['Inter'] text-[13px] text-[#888888]">{m.label}</span>
-                <span className="font-['Instrument_Serif'] text-3xl md:text-[44px] italic leading-none text-black">
+                <span className="font-['Instrument_Serif'] text-3xl md:text-[44px] max-[320px]:text-2xl italic leading-none text-black">
                   {m.value}
                 </span>
-                <span className={`font-['Inter'] text-sm font-medium ${m.positive ? "text-[#2D5F2D]" : "text-[#888888]"}`}>
+                <span className={`font-['Inter'] text-sm max-[320px]:text-xs font-medium ${m.positive ? "text-[#2D5F2D]" : "text-[#888888]"}`}>
                   {m.change}
                 </span>
               </div>
@@ -95,7 +95,7 @@ const Dashboard = () => {
                       className={`w-full ${i % 2 === 0 ? "bg-[#2D5F2D]" : "bg-[#3A7A4A]"}`}
                       style={{ height: bar.height }}
                     />
-                    <span className="font-['Inter'] text-xs text-black">{bar.label}</span>
+                    <span className="font-['Inter'] text-xs max-[320px]:text-[10px] text-black">{bar.label}</span>
                   </div>
                 ))}
               </div>
@@ -140,21 +140,21 @@ const Dashboard = () => {
             <table className="w-full min-w-[500px]">
               <thead>
                 <tr className="border-b border-[#F0F0F0]">
-                  <th className="py-3.5 text-left font-['Inter'] text-xs font-medium text-black">Location</th>
-                  <th className="w-[150px] py-3.5 text-left font-['Inter'] text-xs font-medium text-black">Category</th>
-                  <th className="w-[100px] py-3.5 text-left font-['Inter'] text-xs font-medium text-black">Ratings</th>
-                  <th className="w-[80px] py-3.5 text-left font-['Inter'] text-xs font-medium text-black">Avg Score</th>
-                  <th className="w-[100px] py-3.5 text-left font-['Inter'] text-xs font-medium text-black">Trend</th>
+                  <th className="py-3.5 text-left font-['Inter'] text-xs max-[320px]:text-[10px] font-medium text-black">Location</th>
+                  <th className="w-[150px] py-3.5 text-left font-['Inter'] text-xs max-[320px]:text-[10px] font-medium text-black">Category</th>
+                  <th className="w-[100px] py-3.5 text-left font-['Inter'] text-xs max-[320px]:text-[10px] font-medium text-black">Ratings</th>
+                  <th className="w-[80px] py-3.5 text-left font-['Inter'] text-xs max-[320px]:text-[10px] font-medium text-black">Avg Score</th>
+                  <th className="w-[100px] py-3.5 text-left font-['Inter'] text-xs max-[320px]:text-[10px] font-medium text-black">Trend</th>
                 </tr>
               </thead>
               <tbody>
                 {LOCATIONS.map((loc, i) => (
                   <tr key={i} className={i < LOCATIONS.length - 1 ? "border-b border-[#F0F0F0]" : ""}>
-                    <td className="py-4 font-['Inter'] text-sm font-medium text-black">{loc.name}</td>
-                    <td className="py-4 font-['Inter'] text-sm text-[#666666]">{loc.category}</td>
-                    <td className="py-4 font-['Inter'] text-sm text-black">{loc.ratings}</td>
-                    <td className="py-4 font-['Inter'] text-sm text-black">{loc.avg}</td>
-                    <td className={`py-4 font-['Inter'] text-sm font-medium ${
+                    <td className="py-4 font-['Inter'] text-sm max-[320px]:text-xs font-medium text-black">{loc.name}</td>
+                    <td className="py-4 font-['Inter'] text-sm max-[320px]:text-xs text-[#666666]">{loc.category}</td>
+                    <td className="py-4 font-['Inter'] text-sm max-[320px]:text-xs text-black">{loc.ratings}</td>
+                    <td className="py-4 font-['Inter'] text-sm max-[320px]:text-xs text-black">{loc.avg}</td>
+                    <td className={`py-4 font-['Inter'] text-sm max-[320px]:text-xs font-medium ${
                       loc.trendPositive === true ? "text-[#2D5F2D]" : loc.trendPositive === false ? "text-[#888888]" : "text-[#CCCCCC]"
                     }`}>
                       {loc.trend}

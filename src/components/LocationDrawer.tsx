@@ -65,7 +65,7 @@ const LocationDrawer = ({
               <p className="font-display font-bold text-foreground truncate">
                 {topLocation.name}
               </p>
-              <p className="text-xs text-muted-foreground">
+              <p className="text-xs max-[320px]:text-[10px] text-muted-foreground">
                 {topLocation.category} &middot; {topLocation.totalRatings} ratings
               </p>
             </div>
@@ -96,7 +96,7 @@ const LocationDrawer = ({
                     <span className={`px-2.5 py-0.5 rounded-full text-xs font-semibold ${groupCategoryClass}`}>
                       {group.category}
                     </span>
-                    <span className="text-xs text-muted-foreground">
+                    <span className="text-xs max-[320px]:text-[10px] text-muted-foreground">
                       {group.locations.length}
                     </span>
                   </div>
@@ -117,7 +117,7 @@ const LocationDrawer = ({
                             <p className="font-display font-bold text-sm text-foreground truncate">
                               {loc.name}
                             </p>
-                            <span className="text-[10px] text-muted-foreground">
+                            <span className="text-[10px] max-[320px]:text-[8px] text-muted-foreground">
                               {loc.totalRatings} ratings
                             </span>
                           </div>

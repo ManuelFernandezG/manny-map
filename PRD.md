@@ -1,4 +1,4 @@
-# Manny Map (poppin') - Full Documentation
+# Manny Map - Full Documentation
 
 ---
 
@@ -8,6 +8,7 @@
 - **Firebase quota exceeded:** Project hit Firestore free-tier limits. Strategy updated to minimize Firestore usage (see [Firebase Quota & Cost](#firebase-quota--cost-strategy) and [Location Data Strategy](#location-data-strategy)).
 - **Pre-development mode:** Added support for working without Firebase during development (see [Pre-Development Phase](#pre-development-phase)).
 - **Static locations:** Locations moved to bundled JSON/constants to avoid Firestore reads; Firebase reserved for reviews/ratings only.
+- **Precise coordinates:** Ottawa nightlife locations use high-precision lat/lng (right-click-on-map method). Canonical list in `src/data/nightlifeLocations.ts`. See [Location coordinates and precision](#location-coordinates-and-precision).
 
 ---
 
@@ -80,6 +81,21 @@ No. Static locations are usually **faster** because:
 - Heatmap, Supercluster, and markers still run client-side on the in-memory list; performance is unchanged or better.
 
 Regenerating/re-fetching locations from Firestore on each visit is what burns quota and can slow load times; static data avoids both.
+
+### Location coordinates and precision
+
+- **Source of truth:** `src/data/nightlifeLocations.ts` — all nightlife locations (Bar, Club) with `loc(id, name, category, city, lat, lng, neighborhood, ...)`.
+- **How to get precise coordinates:** Right-click the **exact spot** on the map (e.g. Google Maps or OSM, satellite view) and copy the coordinates. Do **not** use the business/POI marker or label — those often return a building centroid and can be several meters off. For best match with the app’s Esri tiles, you can use the same spot in an Esri-based viewer, or accept minor shift from Google.
+- **Precision:** Use full decimal precision from the map (e.g. 45.4291035420482, -75.69345368407755). Sub-meter precision is sufficient; no need to round.
+- **Reference format when bulk-updating:** Name | Latitude | Longitude (pipe-separated table). Example:
+
+  | Name                          | Latitude           | Longitude          |
+  | ----------------------------- | ------------------ | ------------------ |
+  | Heart and Crown               | 45.4291035420482   | -75.69345368407755 |
+  | Sky Lounge                    | 45.42876073695236  | -75.69210954507004 |
+  | …                             | …                  | …                  |
+
+  Ottawa’s 12 nightlife venues are maintained in this format; when expanding to more cities, add entries to `nightlifeLocations.ts` (or future per-city JSON) with the same precision approach.
 
 ---
 

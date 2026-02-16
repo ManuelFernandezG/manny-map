@@ -4,7 +4,6 @@ const NAV_ITEMS = [
   { num: "01", label: "Map", path: "/" },
   { num: "02", label: "Ratings", path: "/dashboard" },
   { num: "03", label: "Profile", path: "/profile" },
-  { num: "04", label: "Admin", path: "/admin" },
 ];
 
 const Sidebar = () => {
