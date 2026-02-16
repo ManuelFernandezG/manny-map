@@ -5,8 +5,22 @@
       "label": "dev",
       "type": "npm",
       "script": "dev",
-      "problemMatcher": [],
       "isBackground": true,
+      "problemMatcher": {
+        "owner": "vite",
+        "pattern": { "regexp": "^$" },
+        "background": {
+          "activeOnStart": true,
+          "beginsPattern": ".",
+          "endsPattern": "Local:\\s*http"
+        }
+      },
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "focus": true,
+        "showReuseMessage": false
+      },
       "group": {
         "kind": "build",
         "isDefault": true

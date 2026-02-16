@@ -12,7 +12,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "setup": "vercel env pull .env.local",
-    "delete-locations": "node scripts/deleteNonNightlifeFood.js"
+    "delete-locations": "node scripts/deleteNonNightlifeFood.js",
+    "deploy:prod": "node scripts/deploy-main.js"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
