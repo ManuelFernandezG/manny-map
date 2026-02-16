@@ -21,7 +21,7 @@ const RatedCarousel = lazy(() => import("@/components/RatedCarousel"));
 const CheckinModal = lazy(() => import("@/components/CheckinModal"));
 const ReviewModal = lazy(() => import("@/components/ReviewModal"));
 const LocationDetailModal = lazy(() => import("@/components/LocationDetailModal"));
-const SignupPrompt = lazy(() => import("@/components/SignupPrompt"));
+const AuthModal = lazy(() => import("@/components/AuthModal"));
 
 const Index = () => {
   const [city, setCity] = useState("Ottawa");
@@ -376,22 +376,14 @@ const Index = () => {
         )}
 
         {showSignupPrompt && (
-          <SignupPrompt
+          <AuthModal
             onClose={() => {
               setShowSignupPrompt(false);
               setHasSeenSignupPrompt(true);
               try { localStorage.setItem("mannymap_signup_prompt_seen", "true"); } catch {}
             }}
-            onSignup={() => {
-              toast.info("Signup feature coming soon!");
-              setShowSignupPrompt(false);
-              setHasSeenSignupPrompt(true);
-              try { localStorage.setItem("mannymap_signup_prompt_seen", "true"); } catch {}
-            }}
-            onSkip={() => {
-              setShowSignupPrompt(false);
-              setHasSeenSignupPrompt(true);
-              try { localStorage.setItem("mannymap_signup_prompt_seen", "true"); } catch {}
+            onSuccess={() => {
+              setRatedLocationIds(getRatedLocationIds());
             }}
           />
         )}

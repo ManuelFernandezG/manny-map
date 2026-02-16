@@ -1,5 +1,5 @@
-import { useMemo, useState, useCallback } from "react";
-import { RefreshCw, Loader, Trash2, UserPlus } from "lucide-react";
+import { useMemo, useState, useCallback, lazy, Suspense } from "react";
+import { RefreshCw, Loader, Trash2, UserPlus, LogOut } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import Sidebar from "@/components/Sidebar";
 import BottomNav from "@/components/BottomNav";
@@ -10,7 +10,10 @@ import type { RatedEntry } from "@/lib/userId";
 import { CATEGORY_COLORS, PHASE_LABELS, CATEGORY_GROUPS } from "@/data/mockData";
 import type { Location } from "@/data/mockData";
 import { useLocations } from "@/hooks/useLocations";
+import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
+
+const AuthModal = lazy(() => import("@/components/AuthModal"));
 
 function getPhaseLabel(phase: string, userGender: string | null): { text: string; color: string } {
   const labels = userGender && PHASE_LABELS[userGender as keyof typeof PHASE_LABELS];
@@ -34,6 +37,8 @@ function timeAgo(ms: number): string {
 
 const Profile = () => {
   const navigate = useNavigate();
+  const { user, logout } = useAuth();
+  const [showAuthModal, setShowAuthModal] = useState(false);
   const [city, setCity] = useState("Ottawa");
   const GROUPS = useMemo(() => ["nightlife"] as const, []);
   const [activeGroups, setActiveGroups] = useState<Set<string>>(() => new Set(GROUPS));
@@ -237,13 +242,31 @@ const Profile = () => {
 
           {/* Account Actions */}
           <div className="flex flex-col gap-2 sm:flex-row sm:justify-center pt-6 border-t border-[#E0E0E0]">
-            <button
-              onClick={() => toast("Create Profile coming soon!")}
-              className="flex items-center justify-center gap-1.5 bg-[#2D5F2D] px-4 py-2 font-['Inter'] text-xs font-medium text-white hover:bg-[#234A23] active:bg-[#1A3A1A] transition-colors rounded-sm"
-            >
-              <UserPlus className="h-3.5 w-3.5" />
-              Create Profile
-            </button>
+            {user ? (
+              <>
+                <div className="flex items-center justify-center gap-2 px-4 py-2 font-['Inter'] text-xs text-[#666666]">
+                  {user.photoURL && (
+                    <img src={user.photoURL} alt="" className="w-6 h-6 rounded-full" referrerPolicy="no-referrer" />
+                  )}
+                  <span>{user.displayName || user.email}</span>
+                </div>
+                <button
+                  onClick={async () => { await logout(); toast.success("Signed out"); }}
+                  className="flex items-center justify-center gap-1.5 bg-white px-4 py-2 font-['Inter'] text-xs font-medium text-[#666666] hover:bg-[#F5F5F5] transition-colors border border-[#E0E0E0] rounded-sm"
+                >
+                  <LogOut className="h-3.5 w-3.5" />
+                  Sign Out
+                </button>
+              </>
+            ) : (
+              <button
+                onClick={() => setShowAuthModal(true)}
+                className="flex items-center justify-center gap-1.5 bg-[#2D5F2D] px-4 py-2 font-['Inter'] text-xs font-medium text-white hover:bg-[#234A23] active:bg-[#1A3A1A] transition-colors rounded-sm"
+              >
+                <UserPlus className="h-3.5 w-3.5" />
+                Sign In
+              </button>
+            )}
             <button
               onClick={handleDeleteAccount}
               className="flex items-center justify-center gap-1.5 bg-white px-4 py-2 font-['Inter'] text-xs font-medium text-[#CC3333] hover:bg-[#FFF5F5] active:bg-[#FFEBEB] transition-colors border border-[#E0E0E0] rounded-sm"
@@ -252,6 +275,13 @@ const Profile = () => {
               Delete Account
             </button>
           </div>
+
+          {/* Auth Modal */}
+          <Suspense fallback={null}>
+            {showAuthModal && (
+              <AuthModal onClose={() => setShowAuthModal(false)} />
+            )}
+          </Suspense>
         </div>
       </main>
 

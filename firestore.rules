@@ -8,10 +8,10 @@ service cloud.firestore {
       // Anyone can read locations
       allow read: if true;
 
-      // No client-side location creation (only reviews/ratings are written by the app)
+      // No client-side location creation
       allow create: if false;
 
-      // Only allow updates to aggregation fields (from rating submissions)
+      // Only allow updates to aggregation fields (from Cloud Functions or client aggregation)
       allow update: if isAggregationUpdate(request.resource.data, resource.data);
 
       // No deletes from clients
@@ -22,11 +22,15 @@ service cloud.firestore {
         // Anyone can read ratings
         allow read: if true;
 
-        // Allow creating a rating with a valid userId and structure
-        allow create: if isValidRating(request.resource.data);
+        // Require auth; userId must match the authenticated user
+        allow create: if request.auth != null
+                       && request.resource.data.userId == request.auth.uid
+                       && isValidRating(request.resource.data);
 
         // Allow updating only your own rating (userId must not change)
-        allow update: if request.resource.data.userId == resource.data.userId
+        allow update: if request.auth != null
+                       && resource.data.userId == request.auth.uid
+                       && request.resource.data.userId == resource.data.userId
                        && isValidRating(request.resource.data);
 
         // No deletes from clients
@@ -42,17 +46,16 @@ service cloud.firestore {
         && newData.coordinates == oldData.coordinates;
     }
 
-    // Helper: validate rating document structure
+    // Helper: validate rating document structure (supports new phase-based schema)
     function isValidRating(data) {
-      return data.keys().hasAll(['userId', 'ageGroup', 'pairs', 'timestamp'])
+      return data.keys().hasAll(['userId', 'ageGroup', 'phase', 'timestamp'])
         && data.userId is string
         && data.userId.size() > 0
-        && data.userId.size() <= 100
+        && data.userId.size() <= 128
         && data.ageGroup is string
         && data.ageGroup in ['18-22', '23-28', '29-35', '36+']
-        && data.pairs is list
-        && data.pairs.size() >= 1
-        && data.pairs.size() <= 3;
+        && data.phase is string
+        && data.phase in ['checkin', 'reviewed'];
     }
 
     // Deny all other collections

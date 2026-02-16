@@ -163,6 +163,16 @@ export async function submitReview(
     addRatedLocationId(locationId, primary.emoji, POSITIVE_EMOJIS.has(primary.emoji));
   }
 
+  // Invalidate user rating cache for this location so next fetch gets fresh data
+  try {
+    const raw = localStorage.getItem(USER_RATING_CACHE_KEY);
+    if (raw) {
+      const cache = JSON.parse(raw);
+      delete cache[locationId];
+      localStorage.setItem(USER_RATING_CACHE_KEY, JSON.stringify(cache));
+    }
+  } catch {}
+
   // Aggregation is done by the Firestore trigger; client refetches locations after a short delay
   return { success: true };
 }
@@ -386,14 +396,42 @@ export async function getRecentTrends(
   }
 }
 
+const USER_RATING_CACHE_KEY = 'mannymap_user_ratings_cache';
+
+function getCachedUserRating(locationId: string): Rating | null {
+  try {
+    const raw = localStorage.getItem(USER_RATING_CACHE_KEY);
+    if (!raw) return null;
+    const cache = JSON.parse(raw);
+    return cache[locationId] ?? null;
+  } catch {
+    return null;
+  }
+}
+
+function setCachedUserRating(locationId: string, rating: Rating): void {
+  try {
+    const raw = localStorage.getItem(USER_RATING_CACHE_KEY);
+    const cache = raw ? JSON.parse(raw) : {};
+    cache[locationId] = rating;
+    localStorage.setItem(USER_RATING_CACHE_KEY, JSON.stringify(cache));
+  } catch {}
+}
+
 export async function getUserRating(locationId: string): Promise<Rating | null> {
+  // Check localStorage cache first (saves 1 Firestore read)
+  const cached = getCachedUserRating(locationId);
+  if (cached) return cached;
+
   try {
     const userId = getUserId();
     const ratingsRef = collection(db, `locations/${locationId}/ratings`);
     const q = query(ratingsRef, where('userId', '==', userId));
     const snapshot = await getDocs(q);
     if (snapshot.empty) return null;
-    return snapshot.docs[0].data() as Rating;
+    const rating = snapshot.docs[0].data() as Rating;
+    setCachedUserRating(locationId, rating);
+    return rating;
   } catch {
     return null;
   }

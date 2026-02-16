@@ -1,5 +1,6 @@
 import { initializeApp } from "firebase/app";
 import { getFirestore } from "firebase/firestore/lite";
+import { getAuth, GoogleAuthProvider } from "firebase/auth";
 
 const firebaseConfig = {
   // Vite uses import.meta.env instead of process.env
@@ -19,3 +20,7 @@ const app = initializeApp(firebaseConfig);
 
 // Export db so it can be used in your Rating components
 export const db = getFirestore(app);
+
+// Export auth for Google Sign-In
+export const auth = getAuth(app);
+export const googleProvider = new GoogleAuthProvider();

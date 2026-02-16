@@ -1,20 +1,26 @@
 /**
- * Anonymous user ID management
- * Creates a persistent user ID for tracking ratings without requiring signup
+ * User ID management
+ * Uses Firebase Auth UID when signed in, falls back to anonymous localStorage ID
  */
+
+import { auth } from './firebase';
 
 const USER_ID_KEY = 'mannymap_user_id';
 const RATING_COUNT_KEY = 'mannymap_rating_count';
 const RATED_LOCATIONS_KEY = 'mannymap_rated_locations';
 
 export function getUserId(): string {
+  // Prefer Firebase Auth UID (0 Firestore cost)
+  const firebaseUser = auth.currentUser;
+  if (firebaseUser) return firebaseUser.uid;
+
   if (typeof window === 'undefined') return '';
 
   try {
     let userId = localStorage.getItem(USER_ID_KEY);
 
     if (!userId) {
-      // Generate anonymous user ID
+      // Generate anonymous user ID as fallback
       userId = `user_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
       localStorage.setItem(USER_ID_KEY, userId);
     }
@@ -22,7 +28,6 @@ export function getUserId(): string {
     return userId;
   } catch (error) {
     console.error('Error getting user ID:', error);
-    // Fallback to session-only ID
     return `session_${Date.now()}`;
   }
 }
