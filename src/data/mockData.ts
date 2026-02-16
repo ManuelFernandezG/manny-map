@@ -196,7 +196,7 @@ export const PHASE_LABELS = {
 // --- Cities ---
 
 export const CITIES: Record<string, { lat: number; lng: number; zoom: number }> = {
-  Ottawa: { lat: 45.4215, lng: -75.6972, zoom: 13 },
+  Ottawa: { lat: 45.4285, lng: -75.6930, zoom: 13 }, // Centered on Byward Market cluster
   Toronto: { lat: 43.6532, lng: -79.3832, zoom: 13 },
   Montreal: { lat: 45.5017, lng: -73.5673, zoom: 13 },
   Guelph: { lat: 43.5448, lng: -80.2482, zoom: 13 },

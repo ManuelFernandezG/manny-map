@@ -1,0 +1,22 @@
+{
+  "name": "Manny Map",
+  "short_name": "Manny",
+  "description": "Discover and rate nightlife spots",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#2D5F2D",
+  "theme_color": "#2D5F2D",
+  "icons": [
+    {
+      "src": "/apple-touch-icon.png",
+      "sizes": "180x180",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ]
+}

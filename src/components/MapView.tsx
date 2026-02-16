@@ -59,11 +59,9 @@ const MapView = ({
       center,
       zoom,
       zoomControl: false,
-      attributionControl: true,
+      attributionControl: false,
       preferCanvas: true,
     });
-
-    L.control.zoom({ position: "bottomright" }).addTo(map);
 
     L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", {
       attribution: '&copy; Esri &mdash; Esri, Maxar, Earthstar Geographics',

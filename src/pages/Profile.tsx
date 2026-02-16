@@ -1,11 +1,13 @@
-import { useMemo } from "react";
+import { useMemo, useState, useCallback } from "react";
 import { RefreshCw, Loader, Trash2, UserPlus } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import Sidebar from "@/components/Sidebar";
 import BottomNav from "@/components/BottomNav";
+import CitySelector from "@/components/CitySelector";
+import CategoryFilter from "@/components/CategoryFilter";
 import { getRatedLocationIds } from "@/lib/userId";
 import type { RatedEntry } from "@/lib/userId";
-import { CATEGORY_COLORS, PHASE_LABELS } from "@/data/mockData";
+import { CATEGORY_COLORS, PHASE_LABELS, CATEGORY_GROUPS } from "@/data/mockData";
 import type { Location } from "@/data/mockData";
 import { useLocations } from "@/hooks/useLocations";
 import { toast } from "sonner";
@@ -32,6 +34,10 @@ function timeAgo(ms: number): string {
 
 const Profile = () => {
   const navigate = useNavigate();
+  const [city, setCity] = useState("Ottawa");
+  const GROUPS = useMemo(() => ["nightlife"] as const, []);
+  const [activeGroups, setActiveGroups] = useState<Set<string>>(() => new Set(GROUPS));
+
   const ratedLocationIds = useMemo(() => getRatedLocationIds(), []);
   const ratedIds = useMemo(() => [...ratedLocationIds.keys()], [ratedLocationIds]);
   const userGender = useMemo(() => {
@@ -50,17 +56,21 @@ const Profile = () => {
     [ottawaLocs, torontoLocs, montrealLocs, guelphLocs]
   );
 
-  // Match rated IDs to location data
+  // Match rated IDs to location data and filter by city and active groups
   const ratedLocations = useMemo(() => {
     return ratedIds
       .map((id) => {
         const loc = allLocations.find((l) => l.id === id);
         const entry = ratedLocationIds.get(id);
         if (!loc || !entry) return null;
+        // Filter by city and active category groups
+        if (loc.city !== city) return null;
+        const group = CATEGORY_GROUPS[loc.category];
+        if (!group || !activeGroups.has(group)) return null;
         return { location: loc, entry };
       })
       .filter(Boolean) as { location: Location; entry: RatedEntry }[];
-  }, [ratedIds, allLocations, ratedLocationIds]);
+  }, [ratedIds, allLocations, ratedLocationIds, city, activeGroups]);
 
   // Sort by most recent first
   const sortedRatings = useMemo(
@@ -78,6 +88,31 @@ const Profile = () => {
     });
     return Array.from(map.entries()).map(([category, items]) => ({ category, items }));
   }, [sortedRatings]);
+
+  const handleGroupToggle = useCallback((groupId: string) => {
+    setActiveGroups((prev) => {
+      const next = new Set(prev);
+      if (next.has(groupId)) next.delete(groupId);
+      else next.add(groupId);
+      return next;
+    });
+  }, []);
+
+  const handleGroupToggleAll = useCallback(() => {
+    setActiveGroups((prev) =>
+      prev.size === GROUPS.length ? new Set<string>() : new Set(GROUPS)
+    );
+  }, [GROUPS]);
+
+  const ratedCountByGroup = useMemo(() => {
+    const count: Record<string, number> = {};
+    allLocations.forEach((loc) => {
+      if (!ratedLocationIds.has(loc.id) || loc.city !== city) return;
+      const group = CATEGORY_GROUPS[loc.category];
+      if (group) count[group] = (count[group] ?? 0) + 1;
+    });
+    return count;
+  }, [allLocations, ratedLocationIds, city]);
 
   const handleDeleteAccount = () => {
     if (!window.confirm("Are you sure you want to delete your account? This will clear all your local data and cannot be undone.")) return;
@@ -98,36 +133,29 @@ const Profile = () => {
       <main className="flex-1 overflow-y-auto bg-[#F5F5F5] p-6 pb-20 md:p-12 md:pb-12">
         <div className="flex flex-col gap-8 md:gap-14">
           {/* Page Header */}
-          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-            <div className="flex flex-col gap-2">
-              <h1 className="font-['Instrument_Serif'] text-4xl md:text-[64px] italic leading-none text-black">
-                Profile
-              </h1>
-              <p className="font-['Inter'] text-sm md:text-base text-[#666666]">
-                {loading ? (
-                  <span className="flex items-center gap-1"><Loader className="h-3.5 w-3.5 animate-spin" /> Loading...</span>
-                ) : (
-                  <>{ratedLocations.length} place{ratedLocations.length !== 1 ? "s" : ""} rated &middot;{" "}
-                  {ratedLocations.filter((r) => r.entry.phase === "checkin").length} awaiting review</>
-                )}
-              </p>
-            </div>
-            <div className="flex items-center gap-3">
-              <button
-                onClick={() => toast("Create Profile coming soon!")}
-                className="flex items-center gap-2.5 bg-[#2D5F2D] px-5 py-3 font-['Inter'] text-sm font-medium text-white hover:opacity-90 transition-opacity"
-              >
-                <UserPlus className="h-4 w-4" />
-                Create Profile
-              </button>
-              <button
-                onClick={handleDeleteAccount}
-                className="flex items-center gap-2.5 bg-white px-4 py-3 font-['Inter'] text-sm text-[#CC3333] hover:bg-red-50 transition-colors"
-              >
-                <Trash2 className="h-4 w-4" />
-                Delete Account
-              </button>
-            </div>
+          <div className="flex flex-col gap-2">
+            <h1 className="font-['Instrument_Serif'] text-4xl md:text-[64px] italic leading-none text-black">
+              Profile
+            </h1>
+            <p className="font-['Inter'] text-sm md:text-base text-[#666666]">
+              {loading ? (
+                <span className="flex items-center gap-1"><Loader className="h-3.5 w-3.5 animate-spin" /> Loading...</span>
+              ) : (
+                <>{ratedLocations.length} place{ratedLocations.length !== 1 ? "s" : ""} rated &middot;{" "}
+                {ratedLocations.filter((r) => r.entry.phase === "checkin").length} awaiting review</>
+              )}
+            </p>
+          </div>
+
+          {/* City Selector and Category Filter */}
+          <div className="flex flex-col gap-3">
+            <CitySelector selectedCity={city} onCityChange={setCity} />
+            <CategoryFilter
+              activeGroups={activeGroups}
+              onToggle={handleGroupToggle}
+              onToggleAll={handleGroupToggleAll}
+              ratedCountByGroup={ratedCountByGroup}
+            />
           </div>
 
           {/* Ratings List */}
@@ -206,6 +234,24 @@ const Profile = () => {
               </div>
             ))
           )}
+
+          {/* Account Actions */}
+          <div className="flex flex-col gap-2 sm:flex-row sm:justify-center pt-6 border-t border-[#E0E0E0]">
+            <button
+              onClick={() => toast("Create Profile coming soon!")}
+              className="flex items-center justify-center gap-1.5 bg-[#2D5F2D] px-4 py-2 font-['Inter'] text-xs font-medium text-white hover:bg-[#234A23] active:bg-[#1A3A1A] transition-colors rounded-sm"
+            >
+              <UserPlus className="h-3.5 w-3.5" />
+              Create Profile
+            </button>
+            <button
+              onClick={handleDeleteAccount}
+              className="flex items-center justify-center gap-1.5 bg-white px-4 py-2 font-['Inter'] text-xs font-medium text-[#CC3333] hover:bg-[#FFF5F5] active:bg-[#FFEBEB] transition-colors border border-[#E0E0E0] rounded-sm"
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+              Delete Account
+            </button>
+          </div>
         </div>
       </main>
 

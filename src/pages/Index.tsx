@@ -81,6 +81,15 @@ const Index = () => {
     () => [cityConfig.lat, cityConfig.lng],
     [cityConfig.lat, cityConfig.lng]
   );
+
+  // Use higher zoom for mobile devices (especially for Ottawa)
+  const isMobile = window.innerWidth < 768;
+  const cityZoom = useMemo(() => {
+    if (city === "Ottawa" && isMobile) {
+      return 15.5; // Tighter view for iPhone
+    }
+    return cityConfig.zoom;
+  }, [city, cityConfig.zoom, isMobile]);
   const filteredLocations = useMemo(
     () => locations.filter((l) => l.city === city),
     [locations, city]
@@ -271,7 +280,7 @@ const Index = () => {
           <MapView
             locations={locationsForMap}
             center={cityCenter}
-            zoom={cityConfig.zoom}
+            zoom={cityZoom}
             ratedLocationIds={ratedLocationIds}
             onLocationClick={handleLocationClick}
             onMapClick={handleMapClick}
@@ -304,11 +313,7 @@ const Index = () => {
       )}
 
       {/* Top bar */}
-      <div className="absolute top-0 left-0 right-0 z-[1001] p-2 sm:p-4 space-y-2 sm:space-y-3">
-        <div className="flex items-center justify-between gap-1.5 sm:gap-3">
-          <CitySelector selectedCity={city} onCityChange={setCity} />
-        </div>
-
+      <div className="absolute top-0 left-0 right-0 z-[1001] p-2 sm:p-4">
         <div className="flex justify-center">
           <LocationSearch
             locations={filteredLocations}
@@ -316,13 +321,6 @@ const Index = () => {
             onLocationSelect={(loc) => setSelectedLocation(loc)}
           />
         </div>
-
-        <CategoryFilter
-          activeGroups={activeGroups}
-          onToggle={handleGroupToggle}
-          onToggleAll={handleGroupToggleAll}
-          ratedCountByGroup={ratedCountByGroup}
-        />
       </div>
 
 
