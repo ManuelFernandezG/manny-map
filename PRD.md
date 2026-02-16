@@ -8,7 +8,7 @@
 - **Firebase quota exceeded:** Project hit Firestore free-tier limits. Strategy updated to minimize Firestore usage (see [Firebase Quota & Cost](#firebase-quota--cost-strategy) and [Location Data Strategy](#location-data-strategy)).
 - **Static locations:** All map locations from `src/data/nightlifeLocations.ts`; `useLocations` filters by city only (no Firestore reads for locations).
 - **Precise coordinates:** Ottawa nightlife locations use high-precision lat/lng (right-click-on-map method). Canonical list in `src/data/nightlifeLocations.ts`. See [Location coordinates and precision](#location-coordinates-and-precision).
-- **App layout:** Sidebar (desktop) + BottomNav (mobile) for Map, Ratings (Dashboard), Profile. Dashboard at `/dashboard` with Overview, metrics, Rating Trends, Recent Activity, Top Rated Locations table + Export (mock data for now).
+- **App layout:** Sidebar (desktop) + BottomNav (mobile) for Map, Ratings, Profile. Ratings at `/ratings` with metrics, Rating Trends, Recent Activity, Top Rated Locations table + Export (mock data for now).
 - **Create location disabled:** Map click does not open create flow; LocationDrawer not used on Index.
 
 ---
@@ -22,7 +22,7 @@ For development without Firebase (avoids quota, works offline, ideal for new Git
 3. **Reviews:** Still require Firebase when submitting check-ins/reviews; stored in Firestore. For fully offline dev, rating flows would need to check a future env flag.
 4. **Aggregation:** Run via Firebase (client or Cloud Functions); no aggregation when using static locations only.
 
-You can run the app and use the map, dashboard, and profile without Firebase; only check-in/review submission needs Firebase.
+You can run the app and use the map, ratings, and profile without Firebase; only check-in/review submission needs Firebase.
 
 ---
 
@@ -131,7 +131,7 @@ These features are most likely to cause slowness on Safari (especially iOS):
 - **Circle markers** for all locations (green fill, white halo); canvas rendering (`preferCanvas: true`)
 - City switching with fly-to animation (Ottawa, Toronto, Montreal, Guelph)
 - Viewport-based location filtering sorted by distance from center (feeds drawer/carousel context)
-- **Layout:** Main app uses `Sidebar` (desktop) + `BottomNav` (mobile) for navigation; Map, Ratings (dashboard), Profile
+- **Layout:** Main app uses `Sidebar` (desktop) + `BottomNav` (mobile) for navigation; Map, Ratings, Profile
 
 ### Check-In System (Phase 1)
 - Demographic gate on first use (age group + gender, stored in localStorage)
@@ -208,7 +208,7 @@ These features are most likely to cause slowness on Safari (especially iOS):
 - `/?review={locationId}` - Opens review modal for a location
 - `/?rate={locationId}` - Opens check-in/review flow
 
-### Dashboard Page (`/dashboard`)
+### Ratings Page (`/ratings`)
 - **Ratings overview** (nav label: "Ratings"): Overview title, metric cards (Total Ratings, Avg. Rating, Locations Rated, Ratings This Week), Rating Trends bar chart, Recent Activity feed, **Top Rated Locations** table with **Export** button
 - Uses static mock data for now (METRICS, BARS, ACTIVITY, LOCATIONS). Fonts: Instrument Serif (headings), Inter (body), DM Sans (nav)
 - Layout: `Sidebar` + main content + `BottomNav`; lazy-loaded route
@@ -377,7 +377,7 @@ user_{Date.now()}_{random 9-char base36}
 | Component | Path | Route |
 |-----------|------|-------|
 | Index | `src/pages/Index.tsx` | `/` (Map) |
-| Dashboard | `src/pages/Dashboard.tsx` | `/dashboard` (Ratings overview, lazy) |
+| Ratings | `src/pages/Dashboard.tsx` | `/ratings` (Ratings overview, lazy) |
 | Profile | `src/pages/Profile.tsx` | `/profile` (lazy) |
 | NotFound | `src/pages/NotFound.tsx` | `*` |
 

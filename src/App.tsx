@@ -8,7 +8,7 @@ import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 
 const Profile = lazy(() => import("./pages/Profile"));
-const Dashboard = lazy(() => import("./pages/Dashboard"));
+const Dashboard = lazy(() => import("./pages/ratings"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -30,7 +30,7 @@ const App = () => (
         <Routes>
           <Route path="/" element={<Index />} />
           <Route path="/profile" element={<Suspense fallback={<div className="min-h-screen bg-background flex items-center justify-center"><p className="text-foreground font-display">Loading profile...</p></div>}><Profile /></Suspense>} />
-          <Route path="/dashboard" element={<Suspense fallback={<div className="min-h-screen bg-[#F5F5F5] flex items-center justify-center"><p className="text-black font-['DM_Sans']">Loading dashboard...</p></div>}><Dashboard /></Suspense>} />
+          <Route path="/ratings" element={<Suspense fallback={<div className="min-h-screen bg-[#F5F5F5] flex items-center justify-center"><p className="text-black font-['DM_Sans']">Loading ratings...</p></div>}><Dashboard /></Suspense>} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
