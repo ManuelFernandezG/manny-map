@@ -70,7 +70,7 @@ export interface RecentTrendsLast7d {
   topCompanion: string | null;
 }
 
-function extractScores(rating: Rating): { emoji: string; word: string; score: number }[] {
+export function extractScores(rating: Rating): { emoji: string; word: string; score: number }[] {
   const results: { emoji: string; word: string; score: number }[] = [];
   if (rating.vibe) results.push(rating.vibe);
   if (rating.taste) results.push(rating.taste);
