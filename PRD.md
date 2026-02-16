@@ -1,4 +1,4 @@
-# Manny Map (poppin') - Full Documentation
+# Manny Map - Full Documentation
 
 ---
 
@@ -6,8 +6,10 @@
 
 - **Nightlife-first scope:** Focus on Bar, Club, and nightlife events first; Food, Outdoors, Events will be added incrementally as core features stabilize.
 - **Firebase quota exceeded:** Project hit Firestore free-tier limits. Strategy updated to minimize Firestore usage (see [Firebase Quota & Cost](#firebase-quota--cost-strategy) and [Location Data Strategy](#location-data-strategy)).
-- **Pre-development mode:** Added support for working without Firebase during development (see [Pre-Development Phase](#pre-development-phase)).
-- **Static locations:** Locations moved to bundled JSON/constants to avoid Firestore reads; Firebase reserved for reviews/ratings only.
+- **Static locations:** All map locations from `src/data/nightlifeLocations.ts`; `useLocations` filters by city only (no Firestore reads for locations).
+- **Precise coordinates:** Ottawa nightlife locations use high-precision lat/lng (right-click-on-map method). Canonical list in `src/data/nightlifeLocations.ts`. See [Location coordinates and precision](#location-coordinates-and-precision).
+- **App layout:** Sidebar (desktop) + BottomNav (mobile) for Map, Ratings, Profile. Ratings at `/ratings` with metrics, Rating Trends, Recent Activity, Top Rated Locations table + Export (mock data for now).
+- **Create location disabled:** Map click does not open create flow; LocationDrawer not used on Index.
 
 ---
 
@@ -15,12 +17,12 @@
 
 For development without Firebase (avoids quota, works offline, ideal for new GitHub contributors):
 
-1. **Environment:** Set `VITE_USE_MOCK_DATA=true` in `.env.local` to bypass Firestore. (Requires implementation in `useLocations` and rating flows to check this flag.)
-2. **Data source:** Use static location JSON in `src/data/` (e.g. `locations.json` or `nightlifeLocations.ts`).
-3. **Reviews:** Stored in `localStorage` or a local mock API during pre-dev; no Firestore writes.
-4. **Aggregation:** Run locally in dev; no Cloud Functions required.
+1. **Environment:** Locations are **always** loaded from static data; `useLocations` reads from `src/data/nightlifeLocations.ts` only (no Firestore reads for locations). No `VITE_USE_MOCK_DATA` flag is used for location loading.
+2. **Data source:** `src/data/nightlifeLocations.ts` â€” Bar/Club only, filtered by city in `useLocations`.
+3. **Reviews:** Still require Firebase when submitting check-ins/reviews; stored in Firestore. For fully offline dev, rating flows would need to check a future env flag.
+4. **Aggregation:** Run via Firebase (client or Cloud Functions); no aggregation when using static locations only.
 
-This lets you build UI, test flows, and contribute without a Firebase project or billing risk.
+You can run the app and use the map, ratings, and profile without Firebase; only check-in/review submission needs Firebase.
 
 ---
 
@@ -40,29 +42,26 @@ This lets you build UI, test flows, and contribute without a Firebase project or
 
 | Action                 | Reads     | Writes    |
 |------------------------|-----------|-----------|
-| Load map (locations)   | N (all locations in city) | 0 |
-| City switch            | N (if cache expired)      | 0 |
+| Load map (locations)   | 0 (static data)           | 0 |
+| City switch            | 0 (static, in-memory filter) | 0 |
 | Submit check-in        | 0         | 1         |
-| Submit review          | ~1–5 (find user's check-in) | 1–2 |
+| Submit review          | ~1â€“5 (find user's check-in) | 1â€“2 |
 | Aggregation (per location) | All ratings in location | 1 (update location) |
 
 ### When You Start Paying
 
-- **Reads:** 50,000/day free. At ~$0.03/100k reads, ~1.6M reads/month ≈ $0.50.
-- **Writes:** 20,000/day free. At ~$0.09/100k writes, ~600k writes/month ≈ $0.50.
+- **Reads:** 50,000/day free. At ~$0.03/100k reads, ~1.6M reads/month â‰ˆ $0.50.
+- **Writes:** 20,000/day free. At ~$0.09/100k writes, ~600k writes/month â‰ˆ $0.50.
 
-**Reviews:** Each review ≈ 2–3 writes (rating + maybe aggregation). On the free tier you can support roughly **6,000–10,000 reviews/day** before hitting write limits, depending on aggregation. The main cost is **location reads** if locations live in Firestore: every user loading the map = N reads (N = locations in city). Moving locations to static data removes those reads (see [Location Data Strategy](#location-data-strategy)).
+**Reviews:** Each review â‰ˆ 2â€“3 writes (rating + maybe aggregation). On the free tier you can support roughly **6,000â€“10,000 reviews/day** before hitting write limits, depending on aggregation. The main cost is **location reads** if locations live in Firestore: every user loading the map = N reads (N = locations in city). Moving locations to static data removes those reads (see [Location Data Strategy](#location-data-strategy)).
 
 ---
 
 ## Location Data Strategy
 
-### Current (Database-Driven)
+### Current (Static Only)
 
-- Locations stored in Firestore `locations/{id}`.
-- `useLocations` fetches all locations for a city on load.
-- Each page load = N Firestore reads (N = locations in that city).
-- Re-importing/regenerating locations (e.g. OSM) adds many writes.
+- **Locations:** Loaded from `src/data/nightlifeLocations.ts` via `useLocations`; filtered by city in memory. No Firestore reads for locations.
 
 ### Recommended (Static Locations + Firebase for Reviews)
 
@@ -76,10 +75,25 @@ This lets you build UI, test flows, and contribute without a Firebase project or
 No. Static locations are usually **faster** because:
 
 - No network round-trip for location data.
-- Bundled JSON is cached by the browser; small JSON (e.g. 50–200 nightlife spots) adds minimal bundle size.
+- Bundled JSON is cached by the browser; small JSON (e.g. 50â€“200 nightlife spots) adds minimal bundle size.
 - Heatmap, Supercluster, and markers still run client-side on the in-memory list; performance is unchanged or better.
 
 Regenerating/re-fetching locations from Firestore on each visit is what burns quota and can slow load times; static data avoids both.
+
+### Location coordinates and precision
+
+- **Source of truth:** `src/data/nightlifeLocations.ts` â€” all nightlife locations (Bar, Club) with `loc(id, name, category, city, lat, lng, neighborhood, ...)`.
+- **How to get precise coordinates:** Right-click the **exact spot** on the map (e.g. Google Maps or OSM, satellite view) and copy the coordinates. Do **not** use the business/POI marker or label â€” those often return a building centroid and can be several meters off. For best match with the appâ€™s Esri tiles, you can use the same spot in an Esri-based viewer, or accept minor shift from Google.
+- **Precision:** Use full decimal precision from the map (e.g. 45.4291035420482, -75.69345368407755). Sub-meter precision is sufficient; no need to round.
+- **Reference format when bulk-updating:** Name | Latitude | Longitude (pipe-separated table). Example:
+
+  | Name                          | Latitude           | Longitude          |
+  | ----------------------------- | ------------------ | ------------------ |
+  | Heart and Crown               | 45.4291035420482   | -75.69345368407755 |
+  | Sky Lounge                    | 45.42876073695236  | -75.69210954507004 |
+  | â€¦                             | â€¦                  | â€¦                  |
+
+  Ottawaâ€™s 12 nightlife venues are maintained in this format; when expanding to more cities, add entries to `nightlifeLocations.ts` (or future per-city JSON) with the same precision approach.
 
 ---
 
@@ -89,14 +103,11 @@ These features are most likely to cause slowness on Safari (especially iOS):
 
 | Feature / Component       | Why it can be slow on Safari |
 |---------------------------|------------------------------|
-| **Heatmap layer** (leaflet.heat) | Canvas-based; Safari's canvas can be slower than Chrome. Layer is already frozen during pan/zoom (PRD). |
-| **Supercluster clustering** | Many markers + clustering math on main thread; Safari’s JS engine can lag with large datasets. |
-| **Recharts** (vibe chart in LocationDetailModal) | SVG-heavy; can stutter on older Safari. |
-| **Large bundle** (848KB main chunk) | Slower parse/compile on mobile Safari. |
-| **Radix UI / Vaul drawer** | Animations and layout recalculation can jank on Safari. |
-| **Dark inverted tiles** | Extra compositing can add minor overhead. |
+| **Canvas markers** (Leaflet circle markers) | Canvas-based; Safari's canvas can be slower than Chrome. |
+| **Large bundle** (main chunk) | Slower parse/compile on mobile Safari. |
+| **Modal animations** | Layout recalculation can jank on Safari. |
 
-**Mitigations:** Keep nightlife dataset small; consider lazy-loading Recharts; reduce marker count with stricter viewport filtering; enable code splitting for admin/profile.
+**Mitigations:** Keep nightlife dataset small; reduce marker count with stricter viewport filtering; enable code splitting for profile.
 
 ---
 
@@ -104,25 +115,23 @@ These features are most likely to cause slowness on Safari (especially iOS):
 
 - **Frontend:** React 18 + TypeScript + Vite
 - **UI:** shadcn/ui + Tailwind CSS (dark theme, lime accent)
-- **Maps:** Leaflet + OpenStreetMap tiles + leaflet.heat + Supercluster
+- **Maps:** Leaflet + Esri World Imagery (satellite) tiles; circle markers (no heatmap or clustering in current build)
 - **Database:** Firebase Firestore
 - **Auth:** Firebase Authentication (guest mode supported)
-- **Caching:** TanStack React Query (5 min stale, 30 min GC)
+- **Caching:** TanStack React Query (app default 30 min stale, 60 min GC; `useLocations` uses `staleTime`/`gcTime` Infinity for static location data)
 - **Hosting:** Vercel (SPA routing, edge CDN)
-- **Fonts:** Outfit (display), Inter (body)
+- **Fonts:** Outfit (display), Inter (body) in Tailwind; Instrument Serif (headings on Dashboard), DM Sans (nav/brand)
 
 ---
 
 ## Features
 
 ### Map & Display
-- Interactive Leaflet map with dark inverted tiles
-- Heatmap layer (intensity scales with rating count, freezes during pan/zoom)
-- Emoji markers for rated locations with zoom-based scaling
-- Marker icon caching for performance
-- Canvas rendering mode for large datasets
+- Interactive Leaflet map with **Esri World Imagery** (satellite) tiles
+- **Circle markers** for all locations (green fill, white halo); canvas rendering (`preferCanvas: true`)
 - City switching with fly-to animation (Ottawa, Toronto, Montreal, Guelph)
-- Viewport-based location filtering sorted by distance from center
+- Viewport-based location filtering sorted by distance from center (feeds drawer/carousel context)
+- **Layout:** Main app uses `Sidebar` (desktop) + `BottomNav` (mobile) for navigation; Map, Ratings, Profile
 
 ### Check-In System (Phase 1)
 - Demographic gate on first use (age group + gender, stored in localStorage)
@@ -152,11 +161,8 @@ These features are most likely to cause slowness on Safari (especially iOS):
 | Crowd | Empty | Quiet | Busy | Packed |
 
 ### Location Drawer
-- Bottom sheet with snap points (collapsed 148px, expanded 55%)
-- Collapsed: shows top nearby location
-- Expanded: scrollable list grouped by category
-- Action buttons: Check In / Review / Re-rate per location
-- Category badges with color coding
+- **Not currently used on Index.** Component exists at `src/components/LocationDrawer.tsx`. Location selection is via map click, search, or RatedCarousel; detail is shown in `LocationDetailModal`.
+- Original spec: bottom sheet with snap points, nearby list grouped by category, Check In / Review actions.
 
 ### Rated Carousel
 - Horizontal carousel of user's previously rated locations
@@ -167,44 +173,30 @@ These features are most likely to cause slowness on Safari (especially iOS):
 ### Search
 - Real-time text filtering (name, category, address, neighborhood)
 - Recent searches (max 1, localStorage-backed)
-- Top suggestions (highest rated locations)
+- Top suggestions: top 3 highest-rated locations when search is empty
 - Max 10 results displayed
 - Click-outside to dismiss
 
 ### Category Filter
-- Grouped categories: Nightlife, Food, Outdoors, Events
-- Multi-select with checkbox + indeterminate state
-- Select all / deselect all per group
-- Active filter count display
+- **Current UI:** Single group "Nightlife" only (checkbox, Select All / Deselect All, active count)
+- Data layer supports groups: Nightlife, Food, Outdoors, Events (for future use)
 
 ### Location Creation
-- Click empty map area to create
-- Name (required, max 200 chars), category (button grid)
-- Optional: address, hours, description
-- Created as `isPending: true`, `isUserCreated: true`
-- Auto-opens check-in modal after creation
+- **Not in app.** Map click is no-op. No `CreateLocationModal` component in codebase; Firestore rules disallow client location create.
 
-### Location Details
-- Overall vibe chart (top 6 emoji-word pairs)
+### Location Details (LocationDetailModal)
+- Overall vibe chart (top 6 emoji-word pairs, custom bar UI)
 - Age group breakdown with dominant emoji per group
 - Divergence flag warning when age groups disagree
-- Suggestion submission form (name/category correction + message)
 - Address, hours, description display
+- "Rate this spot" primary action (no suggestion form in current modal)
 
 ### Signup Prompt
 - Triggers after 3rd rating
-- Feature showcase: personalized feed, tracking, exclusives
-- "Create Account" or "Maybe Later"
-- Shows once per user (localStorage flag)
+- Feature showcase: Personalized Feed, Track Your Ratings, Exclusive Features (save favorites, notifications)
+- "Create Free Account" and "Maybe later"; shows once per user (localStorage flag)
 
-### Admin Dashboard (`/admin`)
-- Client-side password gate (VITE_ADMIN_PASSWORD)
-- **Analytics tab:** total locations, ratings, avg ratings/location, top 10 table
-- **Locations tab:** full table, inline edit (name, category), import reviews button
-- **Import tab:** OSM import with city/radius selection, progress bar, results summary
-- **Suggestions tab:** review/approve/dismiss user suggestions
-
-### OSM Import
+### OSM Import (tooling / not in app UI)
 - Overpass API queries for restaurants, bars, parks, gyms, cafes, nightclubs
 - Duplicate detection (exact name + city match)
 - Category mapping: restaurant/cafe/bar/pub/nightclub/park/gym -> app categories
@@ -216,9 +208,16 @@ These features are most likely to cause slowness on Safari (especially iOS):
 - `/?review={locationId}` - Opens review modal for a location
 - `/?rate={locationId}` - Opens check-in/review flow
 
+### Ratings Page (`/ratings`)
+- **Ratings overview** (nav label: "Ratings"): Overview title, metric cards (Total Ratings, Avg. Rating, Locations Rated, Ratings This Week), Rating Trends bar chart, Recent Activity feed, **Top Rated Locations** table with **Export** button
+- Uses static mock data for now (METRICS, BARS, ACTIVITY, LOCATIONS). Fonts: Instrument Serif (headings), Inter (body), DM Sans (nav)
+- Layout: `Sidebar` + main content + `BottomNav`; lazy-loaded route
+
 ### Profile Page (`/profile`)
-- User's rating history
-- Lazy-loaded route
+- Rating history grouped by category; each item shows phase (check-in vs reviewed), time ago, re-rate/review links with deep links to `/?review=id` or `/?rate=id`
+- Header: "Create Profile" button (toast placeholder), "Delete Account" (clears localStorage/sessionStorage and redirects to map)
+- Empty state: "No ratings yet" with "Back to Map"
+- Uses `Sidebar` + `BottomNav`; lazy-loaded route
 
 ---
 
@@ -245,14 +244,6 @@ These features are most likely to cause slowness on Safari (especially iOS):
 - `divergenceFlagged = true` if score >= 0.5 AND 2+ active groups
 - Purpose: surfaces locations where age groups disagree on vibe
 
-### Heatmap Intensity
-```
-intensity = min(1, 0.2 + totalRatings / 30)
-```
-- Base intensity 0.2, maxes out at 30 ratings
-- Custom gradient: green to yellow
-- Layer hidden during map interaction for performance
-
 ### Viewport Filtering
 ```
 visibleLocations = filteredLocations
@@ -271,8 +262,8 @@ visibleLocations = filteredLocations
 ## User Flows
 
 ### Flow 1: First-Time Rating
-1. Land on map -> view heatmap + markers
-2. Tap location (map or drawer) -> LocationDetailModal
+1. Land on map -> view map + markers
+2. Tap location (map or search/carousel) -> LocationDetailModal
 3. "Rate this spot" -> CheckinModal
 4. First time: age group + gender gate (saved to localStorage)
 5. Select travel time, group size, companion -> submit check-in (Phase 1)
@@ -286,20 +277,14 @@ visibleLocations = filteredLocations
 ### Flow 2: City Switch
 1. Tap CitySelector -> pick city
 2. Map flies to city coordinates
-3. `useLocations` hook fetches locations for new city (React Query cached)
-4. Drawer, carousel, search all update
+3. `useLocations` returns locations for new city from static `nightlifeLocations.ts` (React Query cache, `staleTime`/`gcTime` Infinity)
+4. Carousel, search, and map markers update
 
 ### Flow 3: Create Location
-1. Tap empty map area -> CreateLocationModal
-2. Fill name + category (address/hours/description optional)
-3. Submit -> Firestore doc created (`isPending: true`)
-4. CheckinModal auto-opens
+- **Not implemented.** Map click is no-op; create flow disabled to avoid Firestore writes.
 
 ### Flow 4: Suggest Correction
-1. Open LocationDetailModal -> "Suggest a change"
-2. Fill corrected name/category + message
-3. Submit -> creates `/suggestions/{id}` doc
-4. Admin reviews in dashboard
+- **Backend/spec only.** LocationDetailModal may expose "Suggest a change"; no in-app review UI.
 
 ---
 
@@ -307,12 +292,12 @@ visibleLocations = filteredLocations
 
 **Strategy:** Prefer static locations (bundled JSON) to avoid Firestore reads. Use Firestore mainly for reviews/ratings. See [Location Data Strategy](#location-data-strategy).
 
-### Collection: `locations/{locationId}` (Optional — use static data to save quota)
+### Collection: `locations/{locationId}` (Optional â€” use static data to save quota)
 | Field | Type | Description |
 |-------|------|-------------|
 | `id` | string | Document ID |
 | `name` | string | Location name (max 200) |
-| `category` | string | Restaurant, Nightclub, Park, Gym, Run Route, Event, Pop-up, Bar, Cafe, Other |
+| `category` | string | Restaurant, Nightclub, Park, Gym, Run Route, Event, Bar, Cafe, Other |
 | `city` | string | Ottawa, Toronto, Montreal, Guelph |
 | `coordinates` | map | `{ lat, lng }` |
 | `address` | string | Street address (max 500) |
@@ -320,7 +305,7 @@ visibleLocations = filteredLocations
 | `hours` | string | Operating hours (max 200) |
 | `description` | string | Description (max 1000) |
 | `isUserCreated` | boolean | User-created vs imported |
-| `isPending` | boolean | Pending admin approval |
+| `isPending` | boolean | Pending approval |
 | `totalRatings` | number | Total rating count |
 | `ratingsByAgeGroup` | map | Per age group: `{ dominant: { emoji, word, count }, totalRatings, topPairs[] }` |
 | `ratingsByGender` | map | Per gender: same structure as above |
@@ -352,7 +337,7 @@ visibleLocations = filteredLocations
 | `crowd` | ReviewScore | Outdoors: `{ emoji, word, score }` |
 | `reviewedAt` | timestamp | Review submission time |
 
-### Collection: `suggestions/{suggestionId}`
+### Collection: `suggestions/{suggestionId}` (not in current Firestore rules)
 | Field | Type | Description |
 |-------|------|-------------|
 | `locationId` | string | Target location |
@@ -363,11 +348,10 @@ visibleLocations = filteredLocations
 | `userId` | string | Submitter |
 | `createdAt` | timestamp | Submission time |
 
-### Security Rules
-- **Locations:** public read, validated create, aggregation-only updates, no deletes
-- **Ratings:** public read, validated create with structure checking, user can update own
-- **Suggestions:** user-created documents
-- All other collections denied
+### Security Rules (current)
+- **Locations:** read only; create `false`; update only for aggregation fields (same name/category/city/coordinates); no delete
+- **Ratings:** read; create/update if valid structure (`userId`, `ageGroup`, `pairs`, etc.)
+- All other collections (including `suggestions`) denied by catch-all
 
 ### Local Storage Keys
 | Key | Purpose |
@@ -392,16 +376,22 @@ user_{Date.now()}_{random 9-char base36}
 ### Pages
 | Component | Path | Route |
 |-----------|------|-------|
-| Index | `src/pages/Index.tsx` | `/` |
-| Admin | `src/pages/Admin.tsx` | `/admin` (lazy) |
+| Index | `src/pages/Index.tsx` | `/` (Map) |
+| Ratings | `src/pages/Dashboard.tsx` | `/ratings` (Ratings overview, lazy) |
 | Profile | `src/pages/Profile.tsx` | `/profile` (lazy) |
 | NotFound | `src/pages/NotFound.tsx` | `*` |
+
+### Layout & Navigation
+| Component | File | Purpose |
+|-----------|------|---------|
+| Sidebar | `src/components/Sidebar.tsx` | Desktop nav: Map, Ratings, Profile (01â€“03); green theme |
+| BottomNav | `src/components/BottomNav.tsx` | Mobile bottom nav: Map, Ratings, Profile |
 
 ### Map Components
 | Component | File | Purpose |
 |-----------|------|---------|
 | MapView | `src/components/MapView.tsx` | Leaflet map + heatmap + markers |
-| LocationDrawer | `src/components/LocationDrawer.tsx` | Bottom sheet with nearby locations |
+| LocationDrawer | `src/components/LocationDrawer.tsx` | Exists but not used on Index; bottom sheet with nearby locations |
 | RatedCarousel | `src/components/RatedCarousel.tsx` | Horizontal carousel of rated spots |
 | LocationCard | `src/components/LocationCard.tsx` | Location card in lists |
 
@@ -411,9 +401,9 @@ user_{Date.now()}_{random 9-char base36}
 | CheckinModal | `src/components/CheckinModal.tsx` | Phase 1 check-in flow |
 | ReviewModal | `src/components/ReviewModal.tsx` | Phase 2 emoji review |
 | LocationDetailModal | `src/components/LocationDetailModal.tsx` | Full location stats |
-| CreateLocationModal | `src/components/CreateLocationModal.tsx` | New location form |
+| CreateLocationModal | â€” | Not in codebase |
 | SignupPrompt | `src/components/SignupPrompt.tsx` | Post-3rd-rating signup |
-| ReviewImportModal | `src/components/ReviewImportModal.tsx` | Admin: seed reviews |
+| ReviewImportModal | `src/components/ReviewImportModal.tsx` | Seed reviews for a location (no in-app entry point) |
 
 ### Filters & Navigation
 | Component | File | Purpose |
@@ -422,15 +412,10 @@ user_{Date.now()}_{random 9-char base36}
 | CategoryFilter | `src/components/CategoryFilter.tsx` | Multi-select category filter |
 | CitySelector | `src/components/CitySelector.tsx` | City dropdown switcher |
 
-### Admin
-| Component | File | Purpose |
-|-----------|------|---------|
-| ImportTool | `src/components/ImportTool.tsx` | OSM batch import UI |
-
 ### Hooks
 | Hook | File | Purpose |
 |------|------|---------|
-| useLocations | `src/hooks/useLocations.ts` | Fetch + cache locations per city |
+| useLocations | `src/hooks/useLocations.ts` | Returns locations from static `NIGHTLIFE_LOCATIONS` filtered by city; React Query with `staleTime`/`gcTime` Infinity |
 | useMobile | `src/hooks/use-mobile.tsx` | Mobile viewport detection |
 | useToast | `src/hooks/use-toast.ts` | Toast notifications |
 
@@ -456,10 +441,10 @@ Bar, Club, Restaurant, Cafe, Gym, Beach, Trail, Run Club, Festival, Concert
 
 ### Category Groups (Nightlife-First Scope)
 
-- **Phase 1 (Current):** Nightlife — Bar, Club
-- **Phase 2 (Later):** Events — Run Club, Festival, Concert
-- **Phase 3 (Later):** Food — Restaurant, Cafe
-- **Phase 4 (Later):** Outdoors — Gym, Beach, Trail
+- **Phase 1 (Current):** Nightlife â€” Bar, Club
+- **Phase 2 (Later):** Events â€” Run Club, Festival, Concert
+- **Phase 3 (Later):** Food â€” Restaurant, Cafe
+- **Phase 4 (Later):** Outdoors â€” Gym, Beach, Trail
 
 Food, Outdoors, and Events categories will be enabled incrementally as core features (reviews, check-ins, map performance) are stable.
 
@@ -482,13 +467,11 @@ Food, Outdoors, and Events categories will be enabled incrementally as core feat
 
 1. **Clone:** `git clone https://github.com/YOUR_USERNAME/manny-map.git` (replace with your repo URL)
 2. **Install:** `npm install`
-3. **Pre-dev mode:** Create `.env.local` with `VITE_USE_MOCK_DATA=true` once implemented (see [Pre-Development Phase](#pre-development-phase)). Until then, Firebase config is required.
-4. **Run:** `npm run dev` — app at http://localhost:5173 (or 8080)
-5. **Branch:** `git checkout -b your-feature` — work on a branch, don't commit to `main` directly
-6. **Commit & push:** `git add .` → `git commit -m "Your message"` → `git push origin your-feature`
+3. **Run:** `npm run dev` â€” app at http://localhost:5173 (or 8080). Map and Dashboard work with static data; no Firebase required for viewing.
+4. **Firebase (optional):** Required only for check-in/review submission. Add Firebase config when testing those flows.
+5. **Branch:** `git checkout -b your-feature` â€” work on a branch, don't commit to `main` directly
+6. **Commit & push:** `git add .` â†’ `git commit -m "Your message"` â†’ `git push origin your-feature`
 7. **Pull request:** Open a PR on GitHub to merge into `main`
-
-Use pre-dev mode so you don't need Firebase credentials or risk quota. Add Firebase only when testing real reviews.
 
 ---
 
@@ -518,9 +501,8 @@ Use pre-dev mode so you don't need Firebase credentials or risk quota. Add Fireb
 ## Known Issues
 
 ### Critical
-- **Admin auth is cosmetic:** client-side password check only, `VITE_ADMIN_PASSWORD` in bundle
-- **Firebase quota exceeded:** Project hit free-tier limits. Use pre-dev mode + static locations; reserve Firestore for reviews only (see [Firebase Quota](#firebase-quota--cost-strategy)).
-- **Scaling:** no viewport-based Firestore queries, needs geohashing for 1000+ locations
+- **Firebase quota exceeded:** Project hit free-tier limits. Locations are static; Firestore used for reviews only (see [Firebase Quota](#firebase-quota--cost-strategy)).
+- **Scaling:** no viewport-based Firestore queries; static list is small (e.g. 12 Ottawa nightlife); geohashing needed for 1000+ locations if locations move back to DB
 
 ### Moderate
 - **Search:** client-side only, no fuzzy matching, `MAX_RECENT = 1`
@@ -533,5 +515,36 @@ Use pre-dev mode so you don't need Firebase credentials or risk quota. Add Fireb
 - Component and E2E tests
 - Cloud Functions for server-side aggregation
 - Fuzzy search (Meilisearch/Typesense)
-- More cities
+- More cities (Toronto, Montreal, Guelph in CITIES but nightlife list is Ottawa-only in `nightlifeLocations.ts`)
 - PostGIS migration for spatial queries at scale
+- Wire Dashboard Top Rated Locations and Export to real data; currently static mock
+- Re-enable Create Location flow if product needs it
+
+---
+
+## Possible Additions
+
+Features or specs that are **not** in the current app but could be added later. PRD body above has been aligned to current code; this section captures the delta.
+
+### Map & display
+- **Heatmap layer** (e.g. leaflet.heat): intensity by rating count, freeze during pan/zoom, green–yellow gradient. Algorithm in PRD (intensity = min(1, 0.2 + totalRatings/30)).
+- **OpenStreetMap or dark inverted tiles** (current map uses Esri World Imagery only).
+- **Emoji markers** for rated locations with zoom-based scaling; **marker icon caching** (current map uses uniform green circle markers).
+- **Supercluster clustering** for large location sets (current map renders all locations as circle markers).
+
+### Location & suggestions
+- **CreateLocationModal** and **create-location flow**: click empty map → form (name, category, address, hours, description) → Firestore doc `isPending: true` → auto-open check-in. Would require Firestore rules and client create.
+- **Suggestion submission** in LocationDetailModal: “Suggest a change” form (corrected name/category + message) → `suggestions/{id}`. Firestore rules currently deny suggestions; would need rule + UI.
+- **LocationDrawer** on Index: bottom sheet with snap points, nearby list by category, Check In / Review actions (component exists, not used).
+
+### Category filter
+- **Food, Outdoors, Events** groups in the filter UI (data and `REVIEW_CONFIG` already support them; UI currently shows Nightlife only).
+
+### Admin & tooling
+- **Admin dashboard** (`/admin`): password gate, Analytics (totals, top locations), Locations table, ReviewImportModal per row. Removed from app; could be re-added.
+- **ImportTool** in UI: OSM Overpass import with city/radius, progress, duplicate detection (component exists; no route).
+- **Suggestions review UI**: approve/dismiss user suggestions (no collection in current Firestore rules).
+
+### Components not in PRD UI map
+- **NavLink** (`src/components/NavLink.tsx`): React Router NavLink wrapper; not referenced by Sidebar/BottomNav (they use buttons + `navigate`).
+- **ImportTool**, **ReviewImportModal**: no in-app entry point after admin removal.

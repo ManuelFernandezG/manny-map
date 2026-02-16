@@ -1,19 +1,21 @@
 import { useMemo } from "react";
-import { RefreshCw, Loader } from "lucide-react";
+import { RefreshCw, Loader, Trash2, UserPlus } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import Sidebar from "@/components/Sidebar";
 import BottomNav from "@/components/BottomNav";
 import { getRatedLocationIds } from "@/lib/userId";
 import type { RatedEntry } from "@/lib/userId";
 import { CATEGORY_COLORS, PHASE_LABELS } from "@/data/mockData";
 import type { Location } from "@/data/mockData";
 import { useLocations } from "@/hooks/useLocations";
+import { toast } from "sonner";
 
 function getPhaseLabel(phase: string, userGender: string | null): { text: string; color: string } {
   const labels = userGender && PHASE_LABELS[userGender as keyof typeof PHASE_LABELS];
   if (phase === "checkin") {
-    return { text: `${labels?.phase1 || "Checked in"} — tap for ${labels?.phase2 || "review"}`, color: "text-amber-400" };
+    return { text: `${labels?.phase1 || "Checked in"} — tap for ${labels?.phase2 || "review"}`, color: "text-amber-500" };
   }
-  return { text: labels?.phase2 || "Reviewed", color: "text-lime-400" };
+  return { text: labels?.phase2 || "Reviewed", color: "text-[#2D5F2D]" };
 }
 
 const TWENTY_FOUR_HOURS = 24 * 60 * 60 * 1000;
@@ -74,111 +76,139 @@ const Profile = () => {
       list.push(item);
       map.set(item.location.category, list);
     });
-    // Use insertion order (order spots appear) instead of fixed CATEGORIES order
     return Array.from(map.entries()).map(([category, items]) => ({ category, items }));
   }, [sortedRatings]);
 
-  return (
-    <div className="min-h-screen bg-background">
-      {/* Header */}
-      <div className="sticky top-0 z-10 bg-card/95 backdrop-blur-md border-b border-border px-4 py-3">
-        <div className="max-w-lg mx-auto">
-          <div>
-            <h1 className="font-display font-bold text-lg text-foreground">My Ratings</h1>
-            <p className="text-xs text-muted-foreground">
-              {loading ? (
-                <span className="flex items-center gap-1"><Loader className="h-3 w-3 animate-spin" /> Loading...</span>
-              ) : (
-                <>{ratedLocations.length} place{ratedLocations.length !== 1 ? "s" : ""} &middot;{" "}
-                {ratedLocations.filter((r) => r.entry.phase === "checkin").length} awaiting review</>
-              )}
-            </p>
-          </div>
-        </div>
-      </div>
+  const handleDeleteAccount = () => {
+    if (!window.confirm("Are you sure you want to delete your account? This will clear all your local data and cannot be undone.")) return;
+    try {
+      localStorage.clear();
+      sessionStorage.clear();
+      toast.success("Account data deleted");
+      navigate("/");
+    } catch {
+      toast.error("Failed to delete account data");
+    }
+  };
 
-      {/* Ratings list */}
-      <div className="max-w-lg mx-auto px-4 py-4 pb-20 space-y-3">
-        {sortedRatings.length === 0 ? (
-          <div className="text-center py-16">
-            <p className="text-4xl mb-3">📍</p>
-            <p className="font-display font-bold text-foreground mb-1">No ratings yet</p>
-            <p className="text-sm text-muted-foreground mb-4">
-              Go explore the map and rate some spots!
-            </p>
-            <button
-              onClick={() => navigate("/")}
-              className="px-4 py-2 rounded-lg bg-primary text-primary-foreground font-display font-semibold text-sm hover:opacity-90"
-            >
-              Back to Map
-            </button>
+  return (
+    <div className="flex h-screen w-full">
+      <Sidebar />
+
+      <main className="flex-1 overflow-y-auto bg-[#F5F5F5] p-6 pb-20 md:p-12 md:pb-12">
+        <div className="flex flex-col gap-8 md:gap-14">
+          {/* Page Header */}
+          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+            <div className="flex flex-col gap-2">
+              <h1 className="font-['Instrument_Serif'] text-4xl md:text-[64px] italic leading-none text-black">
+                Profile
+              </h1>
+              <p className="font-['Inter'] text-sm md:text-base text-[#666666]">
+                {loading ? (
+                  <span className="flex items-center gap-1"><Loader className="h-3.5 w-3.5 animate-spin" /> Loading...</span>
+                ) : (
+                  <>{ratedLocations.length} place{ratedLocations.length !== 1 ? "s" : ""} rated &middot;{" "}
+                  {ratedLocations.filter((r) => r.entry.phase === "checkin").length} awaiting review</>
+                )}
+              </p>
+            </div>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => toast("Create Profile coming soon!")}
+                className="flex items-center gap-2.5 bg-[#2D5F2D] px-5 py-3 font-['Inter'] text-sm font-medium text-white hover:opacity-90 transition-opacity"
+              >
+                <UserPlus className="h-4 w-4" />
+                Create Profile
+              </button>
+              <button
+                onClick={handleDeleteAccount}
+                className="flex items-center gap-2.5 bg-white px-4 py-3 font-['Inter'] text-sm text-[#CC3333] hover:bg-red-50 transition-colors"
+              >
+                <Trash2 className="h-4 w-4" />
+                Delete Account
+              </button>
+            </div>
           </div>
-        ) : (
-          groupedRatings.map((group) => {
-            const groupCategoryClass =
-              CATEGORY_COLORS[group.category] || CATEGORY_COLORS["Other"];
-            return (
-              <div key={group.category} className="space-y-2">
-                <div className="flex items-center gap-2 pt-2">
-                  <span className={`px-2.5 py-0.5 rounded-full text-xs font-semibold ${groupCategoryClass}`}>
-                    {group.category}
-                  </span>
-                  <span className="text-xs text-muted-foreground">
+
+          {/* Ratings List */}
+          {sortedRatings.length === 0 ? (
+            <div className="bg-white p-12 text-center">
+              <p className="text-4xl mb-3">📍</p>
+              <p className="font-['Instrument_Serif'] text-2xl italic text-black mb-1">No ratings yet</p>
+              <p className="font-['Inter'] text-sm text-[#888888] mb-4">
+                Go explore the map and rate some spots!
+              </p>
+              <button
+                onClick={() => navigate("/")}
+                className="px-5 py-3 bg-[#2D5F2D] text-white font-['Inter'] text-sm font-medium hover:opacity-90 transition-opacity"
+              >
+                Back to Map
+              </button>
+            </div>
+          ) : (
+            groupedRatings.map((group) => (
+              <div key={group.category} className="flex flex-col gap-4">
+                <div className="flex items-center gap-3">
+                  <h2 className="font-['Instrument_Serif'] text-2xl italic text-black">{group.category}</h2>
+                  <span className="font-['Inter'] text-[13px] text-[#888888]">
                     {group.items.length} rated
                   </span>
                 </div>
-                {group.items.map(({ location, entry }) => {
-                  const phaseInfo = getPhaseLabel(entry.phase, userGender);
-                  const needsReview = entry.phase === "checkin";
-                  return (
-                    <div
-                      key={location.id}
-                      className={`flex items-center gap-3 rounded-xl bg-card border px-4 py-3 ${needsReview ? "border-amber-500/40" : "border-border"}`}
-                    >
-                      <span className="text-2xl flex-shrink-0">
-                        {entry.emoji || location.dominantEmoji}
-                      </span>
-                      <div className="flex-1 min-w-0">
-                        <p className="font-display font-bold text-sm text-foreground truncate">
-                          {location.name}
-                        </p>
-                        <div className="flex items-center gap-2 mt-0.5">
-                          {entry.ratedAt > 0 && (
-                            <span className="text-[10px] text-muted-foreground">
-                              {timeAgo(entry.ratedAt)}
+                <div className="flex flex-col gap-3">
+                  {group.items.map(({ location, entry }) => {
+                    const phaseInfo = getPhaseLabel(entry.phase, userGender);
+                    const needsReview = entry.phase === "checkin";
+                    return (
+                      <div
+                        key={location.id}
+                        className={`flex items-center gap-4 bg-white px-5 py-4 ${needsReview ? "border-l-4 border-l-amber-400" : ""}`}
+                      >
+                        <span className="text-2xl flex-shrink-0">
+                          {entry.emoji || location.dominantEmoji}
+                        </span>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-['Inter'] text-sm font-medium text-black truncate">
+                            {location.name}
+                          </p>
+                          <div className="flex items-center gap-2 mt-0.5">
+                            {entry.ratedAt > 0 && (
+                              <span className="font-['Inter'] text-xs text-[#AAAAAA]">
+                                {timeAgo(entry.ratedAt)}
+                              </span>
+                            )}
+                            <span className={`font-['Inter'] text-xs ${phaseInfo.color}`}>
+                              {phaseInfo.text}
                             </span>
+                          </div>
+                        </div>
+                        <div className="flex-shrink-0">
+                          {needsReview ? (
+                            <button
+                              onClick={() => navigate(`/?review=${location.id}`)}
+                              className="flex items-center gap-1.5 px-4 py-2 bg-[#2D5F2D] text-white font-['Inter'] text-xs font-medium hover:opacity-90 transition-opacity"
+                            >
+                              {PHASE_LABELS[userGender as keyof typeof PHASE_LABELS]?.phase2 || "Review"}
+                            </button>
+                          ) : (
+                            <button
+                              onClick={() => navigate(`/?rate=${location.id}`)}
+                              className="flex items-center gap-1.5 px-4 py-2 bg-[#F5F5F5] hover:bg-[#E0E0E0] text-[#333333] font-['Inter'] text-xs font-medium transition-colors"
+                            >
+                              <RefreshCw className="h-3 w-3" />
+                              Re-rate
+                            </button>
                           )}
-                          <span className={`text-[10px] ${phaseInfo.color}`}>
-                            {needsReview ? phaseInfo.text : phaseInfo.text}
-                          </span>
                         </div>
                       </div>
-                      <div className="flex-shrink-0">
-                        {needsReview ? (
-                          <button
-                            onClick={() => navigate(`/?review=${location.id}`)}
-                            className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-primary text-primary-foreground font-display font-semibold text-xs hover:opacity-90 transition animate-pulse"
-                          >
-                            {PHASE_LABELS[userGender as keyof typeof PHASE_LABELS]?.phase2 || "Review"}
-                          </button>
-                        ) : (
-                          <button
-                            onClick={() => navigate(`/?rate=${location.id}`)}
-                            className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-surface hover:bg-surface-hover text-foreground font-display font-semibold text-xs transition"
-                          >
-                            <RefreshCw className="h-3 w-3" />
-                            Re-rate
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
+                    );
+                  })}
+                </div>
               </div>
-            );
-          })
-        )}
-      </div>
+            ))
+          )}
+        </div>
+      </main>
+
       <BottomNav />
     </div>
   );

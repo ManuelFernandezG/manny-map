@@ -1,11 +1,10 @@
-import { Map, User, BarChart3, Shield } from "lucide-react";
+import { Map, User, BarChart3 } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
 
 const tabs = [
   { path: "/", label: "Map", icon: Map },
-  { path: "/dashboard", label: "Ratings", icon: BarChart3 },
+  { path: "/ratings", label: "Ratings", icon: BarChart3 },
   { path: "/profile", label: "Profile", icon: User },
-  { path: "/admin", label: "Admin", icon: Shield },
 ] as const;
 
 const BottomNav = () => {

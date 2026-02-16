@@ -23,15 +23,15 @@ const CitySelector = ({ selectedCity, onCityChange }: CitySelectorProps) => {
     <div ref={ref} className="relative z-[1000]">
       <button
         onClick={() => setOpen(!open)}
-        className="flex items-center gap-1.5 sm:gap-2 bg-[#1A3A2A]/95 backdrop-blur-md px-2.5 py-1.5 sm:px-4 sm:py-2.5 font-['DM_Sans'] font-medium text-xs sm:text-base text-[#C5DFC5] border border-[#2D5F2D] hover:border-[#3A7A4A] transition-all duration-200"
+        className="flex items-center gap-1.5 sm:gap-2 bg-white/95 backdrop-blur-md px-2.5 py-1.5 sm:px-4 sm:py-2.5 font-['DM_Sans'] font-medium text-xs sm:text-base text-[#333] border border-[#E0E0E0] hover:border-[#2D5F2D] transition-all duration-200 rounded-lg"
       >
-        <MapPin className="h-4 w-4 text-[#8FBF8F]" />
+        <MapPin className="h-4 w-4 text-[#2D5F2D]" />
         {selectedCity}
-        <ChevronDown className={`h-4 w-4 text-[#7A8A7A] transition-transform duration-200 ${open ? "rotate-180" : ""}`} />
+        <ChevronDown className={`h-4 w-4 text-[#888] transition-transform duration-200 ${open ? "rotate-180" : ""}`} />
       </button>
 
       {open && (
-        <div className="absolute top-full mt-2 left-0 bg-[#1A3A2A] border border-[#2D5F2D] shadow-xl animate-scale-in overflow-hidden min-w-[160px]">
+        <div className="absolute top-full mt-2 left-0 bg-white border border-[#E0E0E0] shadow-lg rounded-lg animate-scale-in overflow-hidden min-w-[160px]">
           {Object.keys(CITIES).map((city) => (
             <button
               key={city}
@@ -41,8 +41,8 @@ const CitySelector = ({ selectedCity, onCityChange }: CitySelectorProps) => {
               }}
               className={`w-full text-left px-4 py-2.5 font-['DM_Sans'] font-medium transition-colors duration-150 ${
                 city === selectedCity
-                  ? "bg-[#2D5F2D] text-[#8FBF8F]"
-                  : "text-[#C5DFC5] hover:bg-[#2D5F2D]/50"
+                  ? "bg-[#2D5F2D] text-white"
+                  : "text-[#333] hover:bg-[#F5F5F5]"
               }`}
             >
               {city}

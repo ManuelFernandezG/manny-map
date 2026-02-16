@@ -1,4 +1,4 @@
-import { collection, addDoc, serverTimestamp, getDocs, query, where } from 'firebase/firestore';
+import { collection, getDocs, query, where } from 'firebase/firestore';
 import { db } from './firebase';
 import { geohashForLocation } from 'geofire-common';
 
@@ -148,8 +148,6 @@ export async function importLocationsToFirebase(
   let skipped = 0;
   let errors = 0;
 
-  const locationsRef = collection(db, 'locations');
-
   for (let i = 0; i < places.length; i++) {
     const place = places[i];
     onProgress?.(i + 1, places.length);
@@ -175,66 +173,9 @@ export async function importLocationsToFirebase(
         continue;
       }
 
-      // Create location document
-      const category = mapCategory(place.tags);
-      const address = [
-        place.tags['addr:housenumber'],
-        place.tags['addr:street'],
-        place.tags['addr:city'] || city
-      ]
-        .filter(Boolean)
-        .join(' ');
-
-      const locationData = {
-        name: place.tags.name,
-        category,
-        address: address || '',
-        neighborhood: '',
-        city,
-        lat: place.lat,
-        lng: place.lon,
-        geohash: geohashForLocation([place.lat, place.lon]),
-        hours: place.tags.opening_hours || '',
-        description: '',
-        phone: place.tags.phone || '',
-        website: place.tags.website || '',
-        isUserCreated: false,
-        isPending: false,
-        totalRatings: 0,
-        ratingsByAgeGroup: {
-          '18-22': {
-            dominant: { emoji: '🔥', word: 'New', count: 0 },
-            totalRatings: 0,
-            topPairs: []
-          },
-          '23-28': {
-            dominant: { emoji: '🔥', word: 'New', count: 0 },
-            totalRatings: 0,
-            topPairs: []
-          },
-          '29-35': {
-            dominant: { emoji: '🔥', word: 'New', count: 0 },
-            totalRatings: 0,
-            topPairs: []
-          },
-          '36+': {
-            dominant: { emoji: '🔥', word: 'New', count: 0 },
-            totalRatings: 0,
-            topPairs: []
-          }
-        },
-        divergenceScore: 0,
-        divergenceFlagged: false,
-        dominantEmoji: '🔥',
-        dominantWord: 'New',
-        createdAt: serverTimestamp(),
-        source: 'osm',
-        osmId: place.id
-      };
-
-      await addDoc(locationsRef, locationData);
-      imported++;
-      console.log(`✅ Imported ${place.tags.name}`);
+      // Firestore write disabled: only reviews are written from the app
+      skipped++;
+      console.log(`⏭️  Skipped ${place.tags.name} (location writes disabled)`);
 
     } catch (error) {
       console.error(`❌ Error importing ${place.tags.name}:`, error);

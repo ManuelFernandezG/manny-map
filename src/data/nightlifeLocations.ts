@@ -51,27 +51,16 @@ function loc(
  */
 export const NIGHTLIFE_LOCATIONS: Location[] = [
   // Ottawa
-  loc("bar-standard-ottawa", "The Standard", "Bar", "Ottawa", 45.4284, -75.6924, "Byward Market", "335 Elgin St"),
-  loc("bar-clocktower-ottawa", "Clocktower Brew Pub", "Bar", "Ottawa", 45.4272, -75.6931, "Byward Market", "200 Elgin St"),
-  loc("bar-lowertown-ottawa", "Lowertown Brewery", "Bar", "Ottawa", 45.4301, -75.6845, "Lowertown", "73 York St"),
-  loc("bar-lieutenant-ottawa", "The Lieutenant's Pump", "Bar", "Ottawa", 45.4178, -75.6942, "Old Ottawa South", "361 Elgin St"),
-  loc("club-sky-lounge-ottawa", "Sky Lounge", "Club", "Ottawa", 45.4289, -75.6912, "Byward Market"),
-  loc("bar-brass-monkey-ottawa", "The Brass Monkey", "Bar", "Ottawa", 45.4182, -75.7021, "Westboro", "250 Greenbank Rd"),
-
-  // Toronto
-  loc("bar-republic-toronto", "Republic", "Bar", "Toronto", 43.6452, -79.3891, "Entertainment District", "480 King St W"),
-  loc("bar-baro-toronto", "Baro", "Bar", "Toronto", 43.6489, -79.3932, "King West", "485 King St W"),
-  loc("club-rebel-toronto", "REBEL", "Club", "Toronto", 43.6365, -79.3521, "Port Lands", "11 Polson St"),
-  loc("bar-madison-avenue-toronto", "Madison Avenue Pub", "Bar", "Toronto", 43.6634, -79.4065, "Annex", "14 Madison Ave"),
-  loc("bar-sweaty-betty-toronto", "Sweaty Betty's", "Bar", "Toronto", 43.6512, -79.3989, "Queen West"),
-
-  // Montreal
-  loc("bar-saint-sulpice-montreal", "Café Saint-Sulpice", "Bar", "Montreal", 45.5041, -73.5692, "Plateau", "1680 Saint-Denis"),
-  loc("club-sterco-montreal", "Stereo", "Club", "Montreal", 45.5142, -73.5651, "Quartier Latin", "858 Saint-Catherine E"),
-  loc("bar-théâtre-montreal", "Le Théâtre Sainte-Catherine", "Bar", "Montreal", 45.5102, -73.5621, "Quartier Latin"),
-  loc("club-soubois-montreal", "Soubois", "Club", "Montreal", 45.5165, -73.5732, "Plateau", "1433 Saint-Denis"),
-
-  // Guelph
-  loc("bar-slye-fox-guelph", "Slye Fox", "Bar", "Guelph", 43.5452, -80.2489, "Downtown", "18 Wyndham St S"),
-  loc("bar-frank-n-steins-guelph", "Frank n Steins", "Bar", "Guelph", 43.5448, -80.2491, "Downtown", "72 Wyndham St N"),
+  loc("bar-heart-and-crown-ottawa", "Heart and Crown", "Bar", "Ottawa", 45.4291035420482, -75.69345368407755, "Byward Market"),
+  loc("club-sky-lounge-ottawa", "Sky Lounge", "Club", "Ottawa", 45.42876073695236, -75.69210954507004, "Byward Market"),
+  loc("club-room-104-ottawa", "Room 104", "Club", "Ottawa", 45.429222334303475, -75.6923900883509, "Byward Market"),
+  loc("club-the-show-ottawa", "The Show", "Club", "Ottawa", 45.42928303996109, -75.6922760944692, "Byward Market"),
+  loc("bar-lieutenant-pump-ottawa", "Lieutenant's Pump", "Bar", "Ottawa", 45.41553157926998, -75.68810676680073, "Old Ottawa South"),
+  loc("bar-happy-fish-elgin-ottawa", "Happy Fish Elgin", "Bar", "Ottawa", 45.41602029665137, -75.688957888434, "Centretown"),
+  loc("club-city-at-night-ottawa", "City at Night", "Club", "Ottawa", 45.41937851080014, -75.6994562583093, "Hintonburg"),
+  loc("bar-tomo-restaurant-ottawa", "TOMO Restaurant", "Bar", "Ottawa", 45.4295289779174, -75.69230626521792, "Byward Market"),
+  loc("club-berlin-nightclub-ottawa", "Berlin Nightclub", "Club", "Ottawa", 45.42726589859753, -75.69259240635273, "Byward Market"),
+  loc("bar-back-to-brooklyn-ottawa", "Back to Brooklyn Restaurant", "Bar", "Ottawa", 45.429227582395534, -75.69299447119337, "Byward Market"),
+  loc("bar-el-furniture-warehouse-ottawa", "El Furniture Warehouse Ottawa", "Bar", "Ottawa", 45.42914658460657, -75.69321705199387, "Byward Market"),
+  loc("bar-la-ptite-grenouille-ottawa", "La P'tite Grenouille Gatineau", "Bar", "Ottawa", 45.426885375655445, -75.71568610926099, "Gatineau"),
 ];

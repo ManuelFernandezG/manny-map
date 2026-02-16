@@ -134,7 +134,7 @@ const ReviewModal = ({
               <button
                 onClick={handleSubmit}
                 disabled={!allDimensionsFilled}
-                className="w-full py-3.5 rounded-xl bg-primary text-primary-foreground font-display font-bold text-base transition-all disabled:opacity-40 disabled:cursor-not-allowed hover:opacity-90 glow-lime"
+                className="w-full py-3.5 rounded-xl bg-primary text-primary-foreground font-display font-bold text-base transition-all disabled:opacity-40 disabled:cursor-not-allowed hover:opacity-90"
               >
                 Submit {phase2Label}
               </button>

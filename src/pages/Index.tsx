@@ -11,18 +11,16 @@ import { CITIES, CATEGORIES, CATEGORY_GROUPS, PHASE_LABELS } from "@/data/mockDa
 import type { Location } from "@/data/mockData";
 import type { CheckinData, ReviewData } from "@/lib/ratings";
 import { toast } from "sonner";
-import { useLocations } from "@/hooks/useLocations";
+import { useLocations, LOCATIONS_QUERY_VERSION } from "@/hooks/useLocations";
 import { getRatedLocationIds } from "@/lib/userId";
 import type { RatedEntry } from "@/lib/userId";
 
 // Lazy-load heavy components that aren't needed for first paint
 const MapView = lazy(() => import("@/components/MapView"));
-const LocationDrawer = lazy(() => import("@/components/LocationDrawer"));
 const RatedCarousel = lazy(() => import("@/components/RatedCarousel"));
 const CheckinModal = lazy(() => import("@/components/CheckinModal"));
 const ReviewModal = lazy(() => import("@/components/ReviewModal"));
 const LocationDetailModal = lazy(() => import("@/components/LocationDetailModal"));
-const CreateLocationModal = lazy(() => import("@/components/CreateLocationModal"));
 const SignupPrompt = lazy(() => import("@/components/SignupPrompt"));
 
 const Index = () => {
@@ -32,7 +30,6 @@ const Index = () => {
   const [selectedLocation, setSelectedLocation] = useState<Location | null>(null);
   const [checkinLocation, setCheckinLocation] = useState<Location | null>(null);
   const [reviewLocation, setReviewLocation] = useState<Location | null>(null);
-  const [createCoords, setCreateCoords] = useState<{ lat: number; lng: number } | null>(null);
   const [showSignupPrompt, setShowSignupPrompt] = useState(false);
   const [hasSeenSignupPrompt, setHasSeenSignupPrompt] = useState(() => {
     try {
@@ -183,14 +180,9 @@ const Index = () => {
     setSelectedLocation(loc);
   }, []);
 
-  const handleMapClick = useCallback((lat: number, lng: number) => {
-    const nearby = filteredLocations.some(
-      (l) =>
-        Math.abs(l.coordinates.lat - lat) < 0.001 &&
-        Math.abs(l.coordinates.lng - lng) < 0.001
-    );
-    if (!nearby) setCreateCoords({ lat, lng });
-  }, [filteredLocations]);
+  const handleMapClick = useCallback((_lat: number, _lng: number) => {
+    // Map click no longer opens create-location (non-review Firestore writes removed)
+  }, []);
 
   // --- Check-in mutation ---
   const checkinMutation = useMutation({
@@ -232,7 +224,7 @@ const Index = () => {
     },
     onSuccess: () => {
       // Optimistic update: bump totalRatings so list feels instant
-      queryClient.setQueryData<Location[]>(["locations", city], (old) => {
+      queryClient.setQueryData<Location[]>(["locations", LOCATIONS_QUERY_VERSION, city], (old) => {
         if (!old || !reviewLocation) return old;
         return old.map((loc) =>
           loc.id === reviewLocation.id
@@ -240,10 +232,10 @@ const Index = () => {
             : loc
         );
       });
-      queryClient.invalidateQueries({ queryKey: ["locations", city] });
+      queryClient.invalidateQueries({ queryKey: ["locations", LOCATIONS_QUERY_VERSION, city] });
       // Delayed refetch so Firestore trigger has time to run and we get fresh aggregates
       setTimeout(() => {
-        queryClient.refetchQueries({ queryKey: ["locations", city] });
+        queryClient.refetchQueries({ queryKey: ["locations", LOCATIONS_QUERY_VERSION, city] });
       }, 1800);
 
       setRatedLocationIds(getRatedLocationIds());
@@ -269,69 +261,10 @@ const Index = () => {
     reviewMutation.mutate({ locationId: reviewLocation.id, review });
   };
 
-  // --- Create location ---
-  const handleCreateLocation = async (data: {
-    name: string;
-    category: string;
-    address: string;
-    hours: string;
-    description: string;
-  }) => {
-    if (!createCoords) return;
-    if (createCoords.lat < -90 || createCoords.lat > 90 || createCoords.lng < -180 || createCoords.lng > 180) {
-      toast.error("Invalid coordinates.");
-      return;
-    }
-
-    const { collection, addDoc, serverTimestamp } = await import("firebase/firestore/lite");
-    const { db } = await import("@/lib/firebase");
-
-    const locationData = {
-      name: data.name,
-      category: data.category,
-      address: data.address,
-      neighborhood: "",
-      city,
-      coordinates: createCoords,
-      hours: data.hours || "",
-      description: data.description || "",
-      isUserCreated: true,
-      isPending: true,
-      totalRatings: 0,
-      ratingsByAgeGroup: {},
-      divergenceScore: 0,
-      divergenceFlagged: false,
-      dominantEmoji: "📍",
-      dominantWord: "New",
-      createdAt: serverTimestamp(),
-    };
-
-    try {
-      const docRef = await addDoc(collection(db, "locations"), locationData);
-      const newLoc: Location = {
-        id: docRef.id,
-        ...locationData,
-        hours: data.hours || undefined,
-        description: data.description || undefined,
-      };
-
-      queryClient.setQueryData<Location[]>(["locations", city], (old) =>
-        old ? [...old, newLoc] : [newLoc]
-      );
-
-      setCreateCoords(null);
-      toast.success(`${data.name} created! Check in now.`);
-      setTimeout(() => setCheckinLocation(newLoc), 500);
-    } catch (err) {
-      console.error("Error creating location:", err);
-      toast.error("Failed to create location. Please try again.");
-    }
-  };
-
   return (
-    <div className="flex h-screen w-screen overflow-hidden bg-background">
+    <div className="flex h-screen min-h-[100dvh] w-full max-w-[100vw] overflow-x-hidden overflow-y-hidden bg-background">
       <Sidebar />
-      <div className="relative flex-1 overflow-hidden">
+      <div className="relative min-w-0 flex-1 overflow-hidden">
       {/* Map */}
       <div className="absolute inset-0">
         <Suspense fallback={<div className="h-full w-full bg-muted animate-pulse" />}>
@@ -349,21 +282,21 @@ const Index = () => {
 
       {/* Loading overlay */}
       {loading && (
-        <div className="absolute inset-0 z-[500] flex items-center justify-center bg-[#1A3A2A]/30 backdrop-blur-[2px]">
-          <div className="flex flex-col items-center gap-3 bg-[#1A3A2A]/95 backdrop-blur-md px-6 py-4 border border-[#2D5F2D]">
-            <Loader className="h-6 w-6 text-[#8FBF8F] animate-spin" />
-            <p className="text-white font-['DM_Sans'] font-medium text-sm">Loading locations...</p>
+        <div className="absolute inset-0 z-[500] flex items-center justify-center bg-white/30 backdrop-blur-[2px]">
+          <div className="flex flex-col items-center gap-3 bg-white/95 backdrop-blur-md px-6 py-4 border border-[#E0E0E0] card-shadow">
+            <Loader className="h-6 w-6 text-[#2D5F2D] animate-spin" />
+            <p className="text-[#333333] font-['Inter'] font-medium text-sm">Loading locations...</p>
           </div>
         </div>
       )}
 
       {/* Error banner — non-blocking */}
       {error && !loading && (
-        <div className="absolute bottom-16 left-4 right-4 z-[999] flex items-center justify-between gap-3 bg-[#1A3A2A]/95 backdrop-blur-md px-4 py-3 border border-[#2D5F2D]">
-          <p className="text-sm text-[#C5DFC5] font-['DM_Sans'] truncate">{error}</p>
+        <div className="absolute bottom-16 left-4 right-4 z-[999] flex items-center justify-between gap-3 bg-white/95 backdrop-blur-md px-4 py-3 border border-[#E0E0E0] card-shadow">
+          <p className="text-sm text-[#333333] font-['Inter'] truncate">{error}</p>
           <button
             onClick={() => window.location.reload()}
-            className="shrink-0 px-3 py-1.5 bg-[#2D5F2D] text-white text-sm font-['DM_Sans'] font-medium hover:bg-[#3A7A4A] transition-colors"
+            className="shrink-0 px-3 py-1.5 bg-[#2D5F2D] text-white text-sm font-['Inter'] font-medium hover:opacity-90 transition-opacity"
           >
             Retry
           </button>
@@ -373,9 +306,6 @@ const Index = () => {
       {/* Top bar */}
       <div className="absolute top-0 left-0 right-0 z-[1001] p-2 sm:p-4 space-y-2 sm:space-y-3">
         <div className="flex items-center justify-between gap-1.5 sm:gap-3">
-          <div className="flex items-center gap-1.5 bg-[#1A3A2A]/95 backdrop-blur-md px-2 py-1.5 sm:px-3 sm:py-2 border border-[#2D5F2D]">
-            <span className="font-['DM_Sans'] font-medium text-[#8FBF8F] text-sm sm:text-lg">Manny Map</span>
-          </div>
           <CitySelector selectedCity={city} onCityChange={setCity} />
         </div>
 
@@ -395,18 +325,10 @@ const Index = () => {
         />
       </div>
 
-      {/* Location count badge */}
-      {!loading && (
-        <div className="absolute top-40 right-4 z-[999] bg-[#1A3A2A]/95 backdrop-blur-md px-3 py-2 border border-[#2D5F2D]">
-          <p className="text-sm font-['DM_Sans'] font-medium text-[#C5DFC5]">
-            {visibleLocations.length} of {inViewLocations.length} spots in view
-          </p>
-        </div>
-      )}
 
       {/* Rated locations carousel */}
       {!loading && ratedLocations.length > 0 && (
-        <div className="absolute bottom-[216px] left-0 right-0 z-[999] pb-2">
+        <div className="absolute bottom-[72px] left-0 right-0 z-[400] pb-2 pointer-events-none">
           <Suspense fallback={null}>
             <RatedCarousel
               locations={ratedLocations}
@@ -419,21 +341,6 @@ const Index = () => {
             />
           </Suspense>
         </div>
-      )}
-
-      {/* Location drawer at bottom */}
-      {!loading && (
-        <Suspense fallback={null}>
-          <LocationDrawer
-            locations={visibleLocations}
-            userAgeGroup={userAgeGroup}
-            userGender={userGender}
-            ratedLocationIds={ratedLocationIds}
-            activeCategories={activeCategories}
-            onLocationTap={(loc) => setSelectedLocation(loc)}
-            onAction={handleLocationAction}
-          />
-        </Suspense>
       )}
 
       {/* Modals — each wrapped in Suspense since they're lazy-loaded */}
@@ -467,15 +374,6 @@ const Index = () => {
             userGender={userGender}
             onSubmit={handleReviewSubmit}
             onClose={() => setReviewLocation(null)}
-          />
-        )}
-
-        {createCoords && (
-          <CreateLocationModal
-            lat={createCoords.lat}
-            lng={createCoords.lng}
-            onSubmit={handleCreateLocation}
-            onClose={() => setCreateCoords(null)}
           />
         )}
 

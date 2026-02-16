@@ -6,54 +6,52 @@
 
 @layer base {
   :root {
-    --background: 216 28% 7%;
-    --foreground: 0 0% 96%;
+    --background: 0 0% 96%;
+    --foreground: 0 0% 10%;
 
-    --card: 220 25% 11%;
-    --card-foreground: 0 0% 96%;
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 10%;
 
-    --popover: 220 25% 11%;
-    --popover-foreground: 0 0% 96%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 10%;
 
-    --primary: 72 100% 50%;
-    --primary-foreground: 0 0% 0%;
+    --primary: 135 37% 27%;
+    --primary-foreground: 0 0% 100%;
 
-    --secondary: 220 20% 16%;
-    --secondary-foreground: 0 0% 85%;
+    --secondary: 0 0% 94%;
+    --secondary-foreground: 0 0% 30%;
 
-    --muted: 220 15% 18%;
-    --muted-foreground: 215 15% 55%;
+    --muted: 0 0% 92%;
+    --muted-foreground: 0 0% 53%;
 
-    --accent: 72 100% 50%;
-    --accent-foreground: 0 0% 0%;
+    --accent: 135 37% 27%;
+    --accent-foreground: 0 0% 100%;
 
-    --destructive: 18 100% 60%;
+    --destructive: 0 65% 48%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 220 15% 20%;
-    --input: 220 15% 20%;
-    --ring: 72 100% 50%;
+    --border: 0 0% 90%;
+    --input: 0 0% 90%;
+    --ring: 135 37% 27%;
 
     --radius: 0.75rem;
 
     /* Custom tokens */
-    --lime: 72 100% 50%;
-    --lime-glow: 72 100% 60%;
-    --surface: 220 25% 11%;
-    --surface-hover: 220 22% 14%;
-    --surface-active: 220 20% 17%;
+    --surface: 0 0% 96%;
+    --surface-hover: 0 0% 92%;
+    --surface-active: 0 0% 88%;
     --warning: 25 100% 60%;
     --warning-foreground: 0 0% 0%;
     --overlay: 0 0% 0%;
 
-    --sidebar-background: 220 25% 9%;
-    --sidebar-foreground: 0 0% 85%;
-    --sidebar-primary: 72 100% 50%;
-    --sidebar-primary-foreground: 0 0% 0%;
-    --sidebar-accent: 220 20% 14%;
-    --sidebar-accent-foreground: 0 0% 85%;
-    --sidebar-border: 220 15% 18%;
-    --sidebar-ring: 72 100% 50%;
+    --sidebar-background: 152 37% 18%;
+    --sidebar-foreground: 138 25% 82%;
+    --sidebar-primary: 138 25% 74%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 150 37% 22%;
+    --sidebar-accent-foreground: 138 25% 82%;
+    --sidebar-border: 150 37% 25%;
+    --sidebar-ring: 138 25% 74%;
   }
 }
 
@@ -62,8 +60,18 @@
     @apply border-border;
   }
 
+  html {
+    overflow-x: hidden;
+  }
+
   body {
     @apply bg-background text-foreground font-body antialiased;
+    overflow-x: hidden;
+    min-height: 100dvh;
+  }
+
+  #root {
+    min-height: 100dvh;
   }
 
   h1, h2, h3, h4, h5, h6 {
@@ -80,27 +88,8 @@
     font-family: 'Inter', sans-serif;
   }
 
-  .glow-lime {
-    box-shadow: 0 0 20px hsl(72 100% 50% / 0.3), 0 0 40px hsl(72 100% 50% / 0.1);
-  }
-
-  .glow-lime-sm {
-    box-shadow: 0 0 10px hsl(72 100% 50% / 0.2);
-  }
-
-  .text-gradient-lime {
-    background: linear-gradient(135deg, hsl(72 100% 50%), hsl(72 100% 70%));
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-  }
-
   .card-shadow {
-    box-shadow: 0 8px 32px hsl(0 0% 0% / 0.4), 0 2px 8px hsl(0 0% 0% / 0.2);
-  }
-
-  .emoji-pin {
-    filter: drop-shadow(0 2px 6px hsl(0 0% 0% / 0.5));
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
   }
 
   .no-scrollbar::-webkit-scrollbar {
@@ -113,54 +102,19 @@
   }
 }
 
-/* Leaflet overrides for dark theme */
-.leaflet-container {
-  background: hsl(216 28% 7%) !important;
-}
-
-.leaflet-tile-pane {
-  filter: brightness(0.7) contrast(1.2) saturate(0.3) hue-rotate(180deg) invert(1);
+/* Leaflet overrides */
+.leaflet-bottom.leaflet-right {
+  bottom: 180px !important;
 }
 
 .leaflet-control-zoom a {
-  background: hsl(220 25% 11%) !important;
-  color: hsl(0 0% 96%) !important;
-  border-color: hsl(220 15% 20%) !important;
-}
-
-.leaflet-control-zoom a:hover {
-  background: hsl(220 22% 14%) !important;
+  background: #fff !important;
+  color: #333 !important;
+  border-color: #ddd !important;
 }
 
 .leaflet-control-attribution {
-  background: hsl(220 25% 11% / 0.8) !important;
-  color: hsl(215 15% 55%) !important;
   font-size: 10px !important;
-}
-
-.leaflet-control-attribution a {
-  color: hsl(72 100% 50%) !important;
-}
-
-/* Custom emoji marker — scales with zoom via --emoji-scale CSS variable */
-.emoji-marker {
-  background: none !important;
-  border: none !important;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-}
-
-.emoji-marker > div {
-  transition: transform 0.25s ease;
-  transform: scale(var(--emoji-scale, 1));
-  will-change: transform;
-}
-
-.emoji-marker:hover > div {
-  transform: scale(calc(var(--emoji-scale, 1) * 1.2));
-  filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.5));
 }
 
 /* Scrollbar styling */
@@ -173,6 +127,6 @@
 }
 
 ::-webkit-scrollbar-thumb {
-  background: hsl(220 15% 25%);
+  background: #ccc;
   border-radius: 999px;
 }

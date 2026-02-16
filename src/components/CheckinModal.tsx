@@ -245,7 +245,7 @@ const CheckinModal = ({
               <button
                 onClick={handleSubmit}
                 disabled={!canSubmit}
-                className="w-full py-3.5 rounded-xl bg-primary text-primary-foreground font-display font-bold text-base transition-all disabled:opacity-40 disabled:cursor-not-allowed hover:opacity-90 glow-lime"
+                className="w-full py-3.5 rounded-xl bg-primary text-primary-foreground font-display font-bold text-base transition-all disabled:opacity-40 disabled:cursor-not-allowed hover:opacity-90"
               >
                 {phase1Label}
               </button>

@@ -78,7 +78,7 @@ const LocationCard = ({ location, userAgeGroup, onTap, onRate }: LocationCardPro
             e.stopPropagation();
             onRate();
           }}
-          className="px-4 py-1.5 rounded-lg bg-primary text-primary-foreground font-display font-semibold text-sm hover:opacity-90 transition-opacity glow-lime-sm"
+          className="px-4 py-1.5 rounded-lg bg-primary text-primary-foreground font-display font-semibold text-sm hover:opacity-90 transition-opacity"
         >
           Rate
         </button>

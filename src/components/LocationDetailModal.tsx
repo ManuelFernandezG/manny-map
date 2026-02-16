@@ -1,11 +1,6 @@
-import { useState } from "react";
-import { X, AlertTriangle, MapPin, Clock, MessageSquare, Send } from "lucide-react";
+import { X, AlertTriangle, MapPin, Clock } from "lucide-react";
 import type { Location } from "@/data/mockData";
-import { CATEGORIES, CATEGORY_COLORS, AGE_GROUPS } from "@/data/mockData";
-import { collection, addDoc, serverTimestamp } from "firebase/firestore/lite";
-import { db } from "@/lib/firebase";
-import { getUserId } from "@/lib/userId";
-import { toast } from "sonner";
+import { CATEGORY_COLORS, AGE_GROUPS } from "@/data/mockData";
 
 interface LocationDetailModalProps {
   location: Location;
@@ -15,37 +10,6 @@ interface LocationDetailModalProps {
 }
 
 const LocationDetailModal = ({ location, userAgeGroup, onClose, onRate }: LocationDetailModalProps) => {
-  const [showSuggestion, setShowSuggestion] = useState(false);
-  const [sugName, setSugName] = useState("");
-  const [sugCategory, setSugCategory] = useState("");
-  const [sugMessage, setSugMessage] = useState("");
-  const [sugSending, setSugSending] = useState(false);
-
-  const handleSuggestionSubmit = async () => {
-    if (!sugMessage.trim() && !sugName.trim() && !sugCategory) return;
-    setSugSending(true);
-    try {
-      await addDoc(collection(db, "suggestions"), {
-        locationId: location.id,
-        locationName: location.name,
-        ...(sugName.trim() && { suggestedName: sugName.trim() }),
-        ...(sugCategory && { suggestedCategory: sugCategory }),
-        message: sugMessage.trim(),
-        userId: getUserId(),
-        createdAt: serverTimestamp(),
-      });
-      toast.success("Suggestion sent!");
-      setShowSuggestion(false);
-      setSugName("");
-      setSugCategory("");
-      setSugMessage("");
-    } catch {
-      toast.error("Failed to send suggestion");
-    } finally {
-      setSugSending(false);
-    }
-  };
-
   const categoryClass = CATEGORY_COLORS[location.category] || CATEGORY_COLORS["Other"];
 
   const emojiCounts: Record<string, { emoji: string; word: string; count: number }> = {};
@@ -79,7 +43,7 @@ const LocationDetailModal = ({ location, userAgeGroup, onClose, onRate }: Locati
                 <span className={`px-2.5 py-0.5 rounded-full text-xs font-medium ${categoryClass}`}>
                   {location.category}
                 </span>
-                <span className="text-sm text-muted-foreground">{location.totalRatings} ratings</span>
+                <span className="text-sm max-[320px]:text-xs text-muted-foreground">{location.totalRatings} ratings</span>
               </div>
             </div>
             <button onClick={onClose} className="p-2 rounded-lg hover:bg-surface-hover transition-colors">
@@ -132,7 +96,7 @@ const LocationDetailModal = ({ location, userAgeGroup, onClose, onRate }: Locati
                       style={{ width: `${(item.count / maxCount) * 100}%` }}
                     />
                   </div>
-                  <span className="text-xs text-muted-foreground w-8 text-right">{item.count}</span>
+                  <span className="text-xs max-[320px]:text-[10px] text-muted-foreground w-8 text-right">{item.count}</span>
                 </div>
               ))}
             </div>
@@ -154,8 +118,8 @@ const LocationDetailModal = ({ location, userAgeGroup, onClose, onRate }: Locati
                     }`}
                   >
                     <div className="flex items-center justify-between mb-2">
-                      <span className="text-xs font-display font-semibold text-muted-foreground">{ag}</span>
-                      <span className="text-xs text-muted-foreground">{group.totalRatings}</span>
+                      <span className="text-xs max-[320px]:text-[10px] font-display font-semibold text-muted-foreground">{ag}</span>
+                      <span className="text-xs max-[320px]:text-[10px] text-muted-foreground">{group.totalRatings}</span>
                     </div>
                     <div className="flex items-center gap-2 mb-2">
                       <span className="text-2xl">{group.dominant.emoji}</span>
@@ -177,66 +141,9 @@ const LocationDetailModal = ({ location, userAgeGroup, onClose, onRate }: Locati
             </div>
           </div>
 
-          {/* Suggestion box */}
-          <div>
-            {!showSuggestion ? (
-              <button
-                onClick={() => setShowSuggestion(true)}
-                className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
-              >
-                <MessageSquare className="h-3.5 w-3.5" />
-                Suggest a change
-              </button>
-            ) : (
-              <div className="rounded-xl bg-surface border border-border p-4 space-y-3">
-                <p className="text-xs font-display font-semibold text-foreground">Suggest a change</p>
-                <input
-                  type="text"
-                  value={sugName}
-                  onChange={(e) => setSugName(e.target.value)}
-                  placeholder="Correct name (optional)"
-                  className="w-full px-3 py-2 rounded-lg bg-background border border-border text-foreground text-sm placeholder:text-muted-foreground focus:outline-none focus:border-primary"
-                />
-                <select
-                  value={sugCategory}
-                  onChange={(e) => setSugCategory(e.target.value)}
-                  className="w-full px-3 py-2 rounded-lg bg-background border border-border text-foreground text-sm"
-                >
-                  <option value="">Correct category (optional)</option>
-                  {CATEGORIES.map((c) => (
-                    <option key={c} value={c}>{c}</option>
-                  ))}
-                </select>
-                <textarea
-                  value={sugMessage}
-                  onChange={(e) => setSugMessage(e.target.value)}
-                  placeholder="What should be changed?"
-                  rows={2}
-                  className="w-full px-3 py-2 rounded-lg bg-background border border-border text-foreground text-sm placeholder:text-muted-foreground focus:outline-none focus:border-primary resize-none"
-                />
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => setShowSuggestion(false)}
-                    className="flex-1 py-2 rounded-lg bg-surface-hover text-foreground font-display font-semibold text-xs"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    onClick={handleSuggestionSubmit}
-                    disabled={sugSending || (!sugMessage.trim() && !sugName.trim() && !sugCategory)}
-                    className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg bg-primary text-primary-foreground font-display font-semibold text-xs disabled:opacity-40"
-                  >
-                    <Send className="h-3 w-3" />
-                    Send
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
-
           <button
             onClick={onRate}
-            className="w-full py-3.5 rounded-xl bg-primary text-primary-foreground font-display font-bold text-base hover:opacity-90 transition-opacity glow-lime"
+            className="w-full py-3.5 rounded-xl bg-primary text-primary-foreground font-display font-bold text-base hover:opacity-90 transition-opacity"
           >
             Rate this spot
           </button>
