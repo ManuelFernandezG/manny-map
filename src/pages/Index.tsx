@@ -313,7 +313,7 @@ const Index = () => {
       )}
 
       {/* Top bar */}
-      <div className="absolute top-0 left-0 right-0 z-[1001] p-2 sm:p-4">
+      <div className="absolute top-0 left-0 right-0 z-[1001] pt-6 pb-2 px-2 sm:pt-8 sm:pb-4 sm:px-4">
         <div className="flex justify-center">
           <LocationSearch
             locations={filteredLocations}
