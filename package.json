@@ -13,6 +13,7 @@
     "test:watch": "vitest",
     "setup": "vercel env pull .env.local",
     "delete-locations": "node scripts/deleteNonNightlifeFood.js",
+    "delete-all-data": "node scripts/deleteAllFirebaseData.js",
     "deploy:prod": "node scripts/deploy-main.js"
   },
   "dependencies": {

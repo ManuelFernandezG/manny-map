@@ -12,7 +12,8 @@
       "Bash(claude mcp:*)",
       "Bash(env:*)",
       "Bash(\"c:/Users/manny/.vscode/extensions/highagency.pencildev-0.6.24/out/mcp-server-windows-x64.exe\" --help)",
-      "WebFetch(domain:mixpanel.com)"
+      "WebFetch(domain:mixpanel.com)",
+      "Bash(node scripts/deleteAllFirebaseData.js:*)"
     ]
   }
 }
