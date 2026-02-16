@@ -23,7 +23,7 @@ export default defineConfig({
         manualChunks: {
           // Split heavy vendor libs into separate cacheable chunks
           firebase: ["firebase/app", "firebase/firestore/lite"],
-          leaflet: ["leaflet", "leaflet.heat"],
+          leaflet: ["leaflet"],
         },
       },
     },
