@@ -118,7 +118,7 @@ const ReviewImportModal = ({ location, onClose, onImported }: ReviewImportModalP
               <select
                 value={ageGroup}
                 onChange={(e) => setAgeGroup(e.target.value)}
-                className="w-full px-3 py-2 rounded-lg bg-surface border border-border text-foreground text-sm"
+                className="w-full px-3 py-2 rounded-lg bg-surface border border-border text-foreground text-base"
               >
                 {AGE_GROUPS.map((ag) => (
                   <option key={ag} value={ag}>{ag}</option>
@@ -130,7 +130,7 @@ const ReviewImportModal = ({ location, onClose, onImported }: ReviewImportModalP
               <select
                 value={gender}
                 onChange={(e) => setGender(e.target.value)}
-                className="w-full px-3 py-2 rounded-lg bg-surface border border-border text-foreground text-sm"
+                className="w-full px-3 py-2 rounded-lg bg-surface border border-border text-foreground text-base"
               >
                 {GENDERS.map((g) => (
                   <option key={g} value={g}>{g}</option>

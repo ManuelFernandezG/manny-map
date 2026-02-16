@@ -123,6 +123,7 @@ const LocationSearch = ({
           }}
           onFocus={() => setIsOpen(true)}
           placeholder={placeholder}
+          style={{ fontSize: 16 }}
           className="w-full pl-9 pr-9 py-2.5 bg-white/95 backdrop-blur-md border border-[#E0E0E0] text-[#333] text-base font-['Inter'] placeholder:text-[#888] focus:outline-none focus:border-[#2D5F2D] transition-colors rounded-lg"
         />
         {searchTerm && (

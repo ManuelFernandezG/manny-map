@@ -143,7 +143,7 @@ const Dashboard = () => {
                 <select
                   value={pregameLocation}
                   onChange={(e) => setPregameLocation(e.target.value)}
-                  className="appearance-none bg-white border border-[#E0E0E0] rounded-lg px-3 py-1.5 pr-8 font-['Inter'] text-xs text-black cursor-pointer hover:border-[#999] transition-colors"
+                  className="appearance-none bg-white border border-[#E0E0E0] rounded-lg px-3 py-1.5 pr-8 font-['Inter'] text-base text-black cursor-pointer hover:border-[#999] transition-colors"
                 >
                   <option value="all">All Locations</option>
                   {NIGHTLIFE_LOCATIONS.map((loc) => (
