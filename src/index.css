@@ -102,6 +102,25 @@
   }
 }
 
+/* Dark mode – applied by html.dark class (desktop toggle) or system pref on mobile */
+html.dark {
+  --background: 150 37% 13%;
+  --foreground: 138 20% 95%;
+  --card: 150 40% 16%;
+  --card-foreground: 138 20% 95%;
+  --popover: 150 40% 14%;
+  --popover-foreground: 138 20% 95%;
+  --secondary: 150 35% 20%;
+  --secondary-foreground: 138 20% 95%;
+  --muted: 150 35% 18%;
+  --muted-foreground: 138 20% 65%;
+  --border: 150 35% 22%;
+  --input: 150 35% 22%;
+  --surface: 150 37% 13%;
+  --surface-hover: 150 37% 16%;
+  --surface-active: 150 37% 19%;
+}
+
 /* Leaflet overrides */
 .leaflet-bottom.leaflet-right {
   bottom: 180px !important;

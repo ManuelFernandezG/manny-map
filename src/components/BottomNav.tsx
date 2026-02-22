@@ -2,7 +2,7 @@ import { Map, User, BarChart3 } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
 
 const tabs = [
-  { path: "/", label: "Map", icon: Map },
+  { path: "/map", label: "Map", icon: Map },
   { path: "/ratings", label: "Ratings", icon: BarChart3 },
   { path: "/profile", label: "Profile", icon: User },
 ] as const;

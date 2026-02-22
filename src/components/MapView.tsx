@@ -2,13 +2,10 @@ import { useEffect, useRef, useCallback } from "react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import type { Location } from "@/data/mockData";
-import type { RatedEntry } from "@/lib/userId";
-
 interface MapViewProps {
   locations: Location[];
   center: [number, number];
   zoom: number;
-  ratedLocationIds: Map<string, RatedEntry>;
   onLocationClick: (location: Location) => void;
   onMapClick: (lat: number, lng: number) => void;
   onBoundsChange?: (bounds: [number, number, number, number]) => void;
@@ -18,7 +15,6 @@ const MapView = ({
   locations,
   center,
   zoom,
-  ratedLocationIds,
   onLocationClick,
   onMapClick,
   onBoundsChange,

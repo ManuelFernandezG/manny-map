@@ -281,7 +281,6 @@ const Index = () => {
             locations={locationsForMap}
             center={cityCenter}
             zoom={cityZoom}
-            ratedLocationIds={ratedLocationIds}
             onLocationClick={handleLocationClick}
             onMapClick={handleMapClick}
             onBoundsChange={setMapBounds}

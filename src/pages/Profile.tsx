@@ -125,7 +125,7 @@ const Profile = () => {
       localStorage.clear();
       sessionStorage.clear();
       toast.success("Account data deleted");
-      navigate("/");
+      navigate("/map");
     } catch {
       toast.error("Failed to delete account data");
     }
@@ -154,7 +154,26 @@ const Profile = () => {
 
           {/* City Selector and Category Filter */}
           <div className="flex flex-col gap-3">
-            <CitySelector selectedCity={city} onCityChange={setCity} />
+            {/* Mobile: dropdown selector */}
+            <div className="md:hidden">
+              <CitySelector selectedCity={city} onCityChange={setCity} />
+            </div>
+            {/* Desktop: pill buttons */}
+            <div className="hidden md:flex items-center gap-2">
+              {["Ottawa", "Toronto", "Montreal", "Guelph"].map((c) => (
+                <button
+                  key={c}
+                  onClick={() => setCity(c)}
+                  className={`h-8 px-3.5 rounded-full font-['DM_Sans'] text-[13px] font-medium transition-colors ${
+                    city === c
+                      ? "bg-[#2D5F2D] text-white"
+                      : "bg-[#F0F0EE] text-[#666666] hover:bg-[#E0E0E0] border border-[#E0E0E0]"
+                  }`}
+                >
+                  {c}
+                </button>
+              ))}
+            </div>
             <CategoryFilter
               activeGroups={activeGroups}
               onToggle={handleGroupToggle}
@@ -172,7 +191,7 @@ const Profile = () => {
                 Go explore the map and rate some spots!
               </p>
               <button
-                onClick={() => navigate("/")}
+                onClick={() => navigate("/map")}
                 className="px-5 py-3 bg-[#2D5F2D] text-white font-['Inter'] text-sm font-medium hover:opacity-90 transition-opacity"
               >
                 Back to Map
@@ -217,14 +236,14 @@ const Profile = () => {
                         <div className="flex-shrink-0">
                           {needsReview ? (
                             <button
-                              onClick={() => navigate(`/?review=${location.id}`)}
+                              onClick={() => navigate(`/map?review=${location.id}`)}
                               className="flex items-center gap-1.5 px-4 py-2 bg-[#2D5F2D] text-white font-['Inter'] text-xs font-medium hover:opacity-90 transition-opacity"
                             >
                               {PHASE_LABELS[userGender as keyof typeof PHASE_LABELS]?.phase2 || "Review"}
                             </button>
                           ) : (
                             <button
-                              onClick={() => navigate(`/?rate=${location.id}`)}
+                              onClick={() => navigate(`/map?rate=${location.id}`)}
                               className="flex items-center gap-1.5 px-4 py-2 bg-[#F5F5F5] hover:bg-[#E0E0E0] text-[#333333] font-['Inter'] text-xs font-medium transition-colors"
                             >
                               <RefreshCw className="h-3 w-3" />

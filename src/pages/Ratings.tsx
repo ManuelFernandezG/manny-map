@@ -2,7 +2,7 @@ import { useState, useMemo } from "react";
 import { ArrowUpDown, ArrowUp, ArrowDown, ChevronDown } from "lucide-react";
 import Sidebar from "@/components/Sidebar";
 import BottomNav from "@/components/BottomNav";
-import PopularTimesBar from "@/components/BusynessHeatMap";
+import PopularTimesBar from "@/components/PopularTimesBar";
 import { NIGHTLIFE_LOCATIONS } from "@/data/nightlifeLocations";
 import { GOOGLE_DATA } from "@/data/googleData";
 import type { DayPopularTimes } from "@/data/googleData";
@@ -12,7 +12,7 @@ import type { DayPopularTimes } from "@/data/googleData";
 const PREGAME_STATS = {
   ageDistribution: { "18-22": 30, "23-28": 40, "29-35": 20, "36+": 10 } as Record<string, number>,
   genderDistribution: { Female: 60, Male: 40 } as Record<string, number>,
-  travelTimeDistribution: { "<5 min": 15, "5-15 min": 45, "15-30 min": 30, "30+ min": 10 } as Record<string, number>,
+  waitTimeDistribution: { "<5 min": 15, "5-15 min": 45, "15-30 min": 30, "30+ min": 10 } as Record<string, number>,
   groupSizeDistribution: { Solo: 10, "2-3": 50, "4-6": 30, "7+": 10 } as Record<string, number>,
 };
 
@@ -163,8 +163,8 @@ const Dashboard = () => {
                 <DistributionBar data={PREGAME_STATS.genderDistribution} color="#6B4C9A" />
               </div>
               <div className="bg-white p-4 flex flex-col gap-2">
-                <span className="font-['Inter'] text-[13px] text-[#888]">Travel time</span>
-                <DistributionBar data={PREGAME_STATS.travelTimeDistribution} color="#1a6b8a" />
+                <span className="font-['Inter'] text-[13px] text-[#888]">Wait time</span>
+                <DistributionBar data={PREGAME_STATS.waitTimeDistribution} color="#1a6b8a" />
               </div>
               <div className="bg-white p-4 flex flex-col gap-2">
                 <span className="font-['Inter'] text-[13px] text-[#888]">Group size</span>
