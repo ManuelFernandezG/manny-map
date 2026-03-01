@@ -14,6 +14,8 @@
     "setup": "vercel env pull .env.local",
     "delete-locations": "node scripts/deleteNonNightlifeFood.js",
     "delete-all-data": "node scripts/deleteAllFirebaseData.js",
+    "seed:saturday": "node scripts/seed-saturday-night.js",
+    "delete-seed": "node scripts/delete-seed-data.js",
     "deploy:prod": "node scripts/deploy-main.js"
   },
   "dependencies": {

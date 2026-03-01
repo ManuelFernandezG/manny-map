@@ -1,13 +1,7 @@
-export interface EmojiWord {
-  emoji: string;
-  word: string;
+export interface AgeGroupStats {
   count: number;
-}
-
-export interface AgeGroupData {
-  dominant: EmojiWord;
-  totalRatings: number;
-  topPairs: EmojiWord[];
+  percent: number;
+  dominantVibe?: string; // emoji
 }
 
 export interface Location {
@@ -22,24 +16,12 @@ export interface Location {
   description?: string;
   isUserCreated: boolean;
   isPending: boolean;
-  totalRatings: number;
-  ratingsByAgeGroup: Record<string, AgeGroupData>;
-  divergenceScore: number;
-  divergenceFlagged: boolean;
-  dominantEmoji: string;
-  dominantWord: string;
-  averageScore?: number;
-  ratingsByGender?: Record<string, AgeGroupData>;
+  // Live aggregates (from Firestore via Cloud Function, optional in static data)
   checkinCount?: number;
-  recentTrendsLast7d?: RecentTrendsLast7d;
-}
-
-export interface RecentTrendsLast7d {
-  avgScore: number;
-  dominantEmoji: string;
-  ratingCount: number;
-  topCompanion: string | null;
-  updatedAt?: unknown;
+  maleCount?: number;
+  femaleCount?: number;
+  dominantVibe?: string; // emoji (🔥 🤯 😴 💀)
+  ratingsByAgeGroup?: Record<string, AgeGroupStats>;
 }
 
 // --- Categories ---
@@ -80,106 +62,27 @@ export const CATEGORY_COLORS: Record<string, string> = {
   Concert: "bg-rose-500/20 text-rose-400",
 };
 
-// --- Review emoji configs per group ---
-
 export interface ReviewEmoji {
   emoji: string;
   word: string;
-  score: number; // 4=best, 1=worst
 }
 
-export interface ReviewDimension {
-  key: string;
-  label: string;
-  emojis: ReviewEmoji[];
-}
+// Nightlife vibe options (the only active review dimension)
+export const VIBE_EMOJIS: ReviewEmoji[] = [
+  { emoji: "💀", word: "Dead" },
+  { emoji: "😴", word: "Slow" },
+  { emoji: "🔥", word: "Fire" },
+  { emoji: "🤯", word: "Crazy" },
+];
 
-export const REVIEW_CONFIG: Record<CategoryGroup, ReviewDimension[]> = {
-  nightlife: [
-    {
-      key: "vibe",
-      label: "Vibe",
-      emojis: [
-        { emoji: "💀", word: "Dead", score: 1 },
-        { emoji: "😴", word: "Slow", score: 2 },
-        { emoji: "🔥", word: "Fire", score: 3 },
-        { emoji: "🤯", word: "Crazy", score: 4 },
-      ],
-    },
-  ],
-  food: [
-    {
-      key: "taste",
-      label: "Taste",
-      emojis: [
-        { emoji: "🤢", word: "Nasty", score: 1 },
-        { emoji: "😴", word: "Mid", score: 2 },
-        { emoji: "🔥", word: "Fire", score: 3 },
-        { emoji: "🤤", word: "Unreal", score: 4 },
-      ],
-    },
-    {
-      key: "price",
-      label: "Price",
-      emojis: [
-        { emoji: "💸", word: "Ripoff", score: 1 },
-        { emoji: "💰", word: "Pricey", score: 2 },
-        { emoji: "💵", word: "Fair", score: 3 },
-        { emoji: "🤑", word: "Steal", score: 4 },
-      ],
-    },
-    {
-      key: "service",
-      label: "Service",
-      emojis: [
-        { emoji: "😤", word: "Rude", score: 1 },
-        { emoji: "😐", word: "Mid", score: 2 },
-        { emoji: "👍", word: "Good", score: 3 },
-        { emoji: "😊", word: "Great", score: 4 },
-      ],
-    },
-  ],
-  outdoors: [
-    {
-      key: "crowd",
-      label: "Crowd",
-      emojis: [
-        { emoji: "🏜️", word: "Empty", score: 1 },
-        { emoji: "👤", word: "Quiet", score: 2 },
-        { emoji: "👥", word: "Busy", score: 3 },
-        { emoji: "❌", word: "Packed", score: 4 },
-      ],
-    },
-  ],
-  events: [
-    {
-      key: "vibe",
-      label: "Vibe",
-      emojis: [
-        { emoji: "💀", word: "Dead", score: 1 },
-        { emoji: "😴", word: "Slow", score: 2 },
-        { emoji: "🔥", word: "Fire", score: 3 },
-        { emoji: "🤯", word: "Crazy", score: 4 },
-      ],
-    },
-  ],
-};
+// Positive vibe emojis (shown as "good" on map/profile)
+export const POSITIVE_EMOJIS = new Set(["🔥", "🤯"]);
 
 // --- Check-in field configs (unified across all groups) ---
 
-export const TRAVEL_TIME_OPTIONS = ["<5 min", "5-15 min", "15-30 min", "30+ min"] as const;
+export const WAIT_TIME_OPTIONS = ["No wait", "<15 min", "15-30 min", "30+ min"] as const;
 export const GROUP_SIZE_OPTIONS = ["Solo", "2-3", "4-6", "7+"] as const;
 export const COMPANION_OPTIONS = ["Friends", "Date", "Family", "Mixed"] as const;
-
-// --- Positive emojis (score >= 3 from all review configs) ---
-
-export const POSITIVE_EMOJIS = new Set(
-  Object.values(REVIEW_CONFIG)
-    .flat()
-    .flatMap((dim) => dim.emojis)
-    .filter((e) => e.score >= 3)
-    .map((e) => e.emoji)
-);
 
 // --- Demographics ---
 

@@ -1,6 +1,9 @@
-import { X, AlertTriangle, MapPin, Clock } from "lucide-react";
+import { useEffect, useState } from "react";
+import { X, MapPin, Clock, Star } from "lucide-react";
 import type { Location } from "@/data/mockData";
 import { CATEGORY_COLORS, AGE_GROUPS } from "@/data/mockData";
+import type { LocationStats } from "@/lib/ratings";
+import { GOOGLE_DATA } from "@/data/googleData";
 
 interface LocationDetailModalProps {
   location: Location;
@@ -10,30 +13,39 @@ interface LocationDetailModalProps {
 }
 
 const LocationDetailModal = ({ location, userAgeGroup, onClose, onRate }: LocationDetailModalProps) => {
-  const categoryClass = CATEGORY_COLORS[location.category] || CATEGORY_COLORS["Other"];
+  const categoryClass = CATEGORY_COLORS[location.category] || CATEGORY_COLORS["Bar"];
+  const google = GOOGLE_DATA[location.id] ?? null;
+  const [stats, setStats] = useState<LocationStats | null>(null);
 
-  const emojiCounts: Record<string, { emoji: string; word: string; count: number }> = {};
-  if (location.ratingsByAgeGroup && typeof location.ratingsByAgeGroup === 'object') {
-    Object.values(location.ratingsByAgeGroup).forEach((group) => {
-      if (group?.topPairs && Array.isArray(group.topPairs)) {
-        group.topPairs.forEach((pair) => {
-          if (pair?.emoji && pair?.word) {
-            const key = `${pair.emoji}${pair.word}`;
-            if (!emojiCounts[key]) emojiCounts[key] = { ...pair, count: 0 };
-            emojiCounts[key].count += pair.count;
-          }
-        });
-      }
+  useEffect(() => {
+    import("@/lib/ratings").then(({ getLocationStats }) => {
+      getLocationStats(location.id).then(setStats);
     });
-  }
-  const sortedEmojis = Object.values(emojiCounts).sort((a, b) => b.count - a.count).slice(0, 6);
-  const maxCount = sortedEmojis[0]?.count || 1;
+  }, [location.id]);
+
+  const total = stats ? stats.checkinCount : 0;
+
+  // Tonight-aware display values
+  const tonightCount = stats?.checkinCountTonight ?? 0;
+  const hasTonight = tonightCount > 0;
+  const displayCount = hasTonight ? tonightCount : total;
+  const displayVibe = hasTonight
+    ? (stats?.dominantVibeTonight || stats?.dominantVibe)
+    : stats?.dominantVibe;
+  const displayMale = hasTonight ? (stats?.maleCountTonight ?? stats?.maleCount ?? 0) : (stats?.maleCount ?? 0);
+  const displayFemale = hasTonight ? (stats?.femaleCountTonight ?? stats?.femaleCount ?? 0) : (stats?.femaleCount ?? 0);
+  const displayLabel = hasTonight ? "TONIGHT" : "THIS WEEK";
+  const historyCount = hasTonight ? total - tonightCount : 0;
+
+  const genderTotal = displayMale + displayFemale;
+  const malePercent = genderTotal > 0 ? Math.round((displayMale / genderTotal) * 100) : null;
+  const femalePercent = genderTotal > 0 ? 100 - malePercent! : null;
 
   return (
     <div className="fixed inset-0 z-[2000] flex items-end sm:items-center justify-center animate-fade-in">
       <div className="absolute inset-0 bg-background/80 backdrop-blur-sm" onClick={onClose} />
 
-      <div className="relative w-full sm:w-[560px] max-h-[90vh] overflow-y-auto bg-card border border-border rounded-t-2xl sm:rounded-2xl card-shadow animate-slide-up">
+      <div className="relative w-full sm:w-[480px] max-h-[90vh] overflow-y-auto bg-card border border-border rounded-t-2xl sm:rounded-2xl card-shadow animate-slide-up">
         {/* Header */}
         <div className="sticky top-0 bg-card/95 backdrop-blur-md z-10 p-5 border-b border-border">
           <div className="flex items-start justify-between">
@@ -43,7 +55,13 @@ const LocationDetailModal = ({ location, userAgeGroup, onClose, onRate }: Locati
                 <span className={`px-2.5 py-0.5 rounded-full text-xs font-medium ${categoryClass}`}>
                   {location.category}
                 </span>
-                <span className="text-sm max-[320px]:text-xs text-muted-foreground">{location.totalRatings} ratings</span>
+                {google && (
+                  <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                    <Star className="h-3 w-3 fill-amber-400 text-amber-400" />
+                    <span className="font-medium text-foreground">{google.googleRating}</span>
+                    <span>· {google.googleReviewCount.toLocaleString()} Google Reviews</span>
+                  </span>
+                )}
               </div>
             </div>
             <button onClick={onClose} className="p-2 rounded-lg hover:bg-surface-hover transition-colors">
@@ -53,6 +71,7 @@ const LocationDetailModal = ({ location, userAgeGroup, onClose, onRate }: Locati
         </div>
 
         <div className="p-5 space-y-6">
+          {/* Location info */}
           <div className="space-y-2">
             {location.address && (
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -71,81 +90,79 @@ const LocationDetailModal = ({ location, userAgeGroup, onClose, onRate }: Locati
             )}
           </div>
 
-          {location.divergenceFlagged && (
-            <div className="flex items-start gap-3 rounded-xl bg-warning/10 border border-warning/20 px-4 py-3">
-              <AlertTriangle className="h-5 w-5 text-warning flex-shrink-0 mt-0.5" />
-              <div>
-                <p className="text-sm font-display font-semibold text-warning">Age groups disagree</p>
-                <p className="text-xs text-warning/70 mt-0.5">
-                  Different age groups have different vibes about this spot
-                </p>
+          {/* Live stats — only shown at 10+ checkins */}
+          {total >= 10 && (
+            <div className="rounded-xl bg-surface border border-border p-4 space-y-4">
+              <p className="text-xs font-display font-semibold text-muted-foreground uppercase tracking-wide">{displayLabel}</p>
+
+              {/* Headline: checkin count + vibe */}
+              <div className="flex items-center gap-3">
+                {displayVibe && (
+                  <span className="text-3xl">{displayVibe}</span>
+                )}
+                <div>
+                  <p className="font-display font-bold text-2xl text-foreground">{displayCount}</p>
+                  <p className="text-xs text-muted-foreground">interested</p>
+                  {hasTonight && historyCount > 0 && (
+                    <p className="text-xs text-muted-foreground/70 mt-0.5">+{historyCount} from last week</p>
+                  )}
+                </div>
               </div>
+
+              {/* Gender ratio */}
+              {malePercent !== null && (
+                <div>
+                  <div className="flex justify-between text-xs text-muted-foreground mb-1.5">
+                    <span>{malePercent}% M</span>
+                    <span>{femalePercent}% F</span>
+                  </div>
+                  <div className="h-2 rounded-full bg-border overflow-hidden flex">
+                    <div
+                      className="h-full bg-blue-500 transition-all duration-500"
+                      style={{ width: `${malePercent}%` }}
+                    />
+                    <div
+                      className="h-full bg-pink-400 transition-all duration-500"
+                      style={{ width: `${femalePercent}%` }}
+                    />
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
-          <div>
-            <h3 className="font-display font-semibold text-sm text-foreground mb-3">Overall Vibe</h3>
-            <div className="space-y-2">
-              {sortedEmojis.map((item) => (
-                <div key={`${item.emoji}${item.word}`} className="flex items-center gap-3">
-                  <span className="text-xl w-8 text-center">{item.emoji}</span>
-                  <span className="text-sm font-medium text-foreground w-24 truncate">{item.word}</span>
-                  <div className="flex-1 h-2 rounded-full bg-surface overflow-hidden">
-                    <div
-                      className="h-full rounded-full bg-primary/60 transition-all duration-500"
-                      style={{ width: `${(item.count / maxCount) * 100}%` }}
-                    />
-                  </div>
-                  <span className="text-xs max-[320px]:text-[10px] text-muted-foreground w-8 text-right">{item.count}</span>
-                </div>
-              ))}
+          {/* Age breakdown — only shown at 10+ checkins */}
+          {stats?.ratingsByAgeGroup && total >= 10 && (
+            <div>
+              <h3 className="font-display font-semibold text-sm text-foreground mb-3">Age Breakdown</h3>
+              <div className="space-y-2">
+                {AGE_GROUPS.map((ag) => {
+                  const group = stats.ratingsByAgeGroup?.[ag];
+                  if (!group || group.count === 0) return null;
+                  return (
+                    <div key={ag} className={`flex items-center gap-3 ${ag === userAgeGroup ? "opacity-100" : "opacity-80"}`}>
+                      <span className={`text-xs font-display font-semibold w-12 text-right ${ag === userAgeGroup ? "text-primary" : "text-muted-foreground"}`}>
+                        {ag}
+                      </span>
+                      <div className="flex-1 h-2 rounded-full bg-surface overflow-hidden">
+                        <div
+                          className={`h-full rounded-full transition-all duration-500 ${ag === userAgeGroup ? "bg-primary" : "bg-primary/50"}`}
+                          style={{ width: `${group.percent}%` }}
+                        />
+                      </div>
+                      <span className="text-xs text-muted-foreground w-8 text-right">{group.percent}%</span>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
-          </div>
-
-          <div>
-            <h3 className="font-display font-semibold text-sm text-foreground mb-3">By Age Group</h3>
-            <div className="grid grid-cols-2 gap-3">
-              {AGE_GROUPS.map((ag) => {
-                const group = location.ratingsByAgeGroup[ag];
-                if (!group || group.totalRatings === 0) return null;
-                return (
-                  <div
-                    key={ag}
-                    className={`rounded-xl p-3.5 border transition-colors ${
-                      ag === userAgeGroup
-                        ? "bg-primary/5 border-primary/30"
-                        : "bg-surface border-border"
-                    }`}
-                  >
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-xs max-[320px]:text-[10px] font-display font-semibold text-muted-foreground">{ag}</span>
-                      <span className="text-xs max-[320px]:text-[10px] text-muted-foreground">{group.totalRatings}</span>
-                    </div>
-                    <div className="flex items-center gap-2 mb-2">
-                      <span className="text-2xl">{group.dominant.emoji}</span>
-                      <span className="font-display font-bold text-foreground">{group.dominant.word}</span>
-                    </div>
-                    <div className="flex gap-1.5 flex-wrap">
-                      {group.topPairs.slice(1, 3).map((pair) => (
-                        <span
-                          key={`${pair.emoji}${pair.word}`}
-                          className="text-xs text-muted-foreground bg-surface-hover rounded px-1.5 py-0.5"
-                        >
-                          {pair.emoji} {pair.word}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
+          )}
 
           <button
             onClick={onRate}
             className="w-full py-3.5 rounded-xl bg-primary text-primary-foreground font-display font-bold text-base hover:opacity-90 transition-opacity"
           >
-            Rate this spot
+            I'm Interested
           </button>
         </div>
       </div>

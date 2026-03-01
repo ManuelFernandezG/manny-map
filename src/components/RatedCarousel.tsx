@@ -26,12 +26,10 @@ function isDebriefPhase(locId: string, ratedLocationIds: Map<string, RatedEntry>
 }
 
 function getVibeTag(loc: Location): string {
-  const femaleCount = loc.ratingsByGender?.["Female"]?.totalRatings ?? 0;
-  const maleCount = loc.ratingsByGender?.["Male"]?.totalRatings ?? 0;
-  const total = femaleCount + maleCount;
-  const femaleRatio = total > 0 ? Math.round((femaleCount / total) * 100) : null;
-  const base = `${loc.dominantEmoji} ${loc.dominantWord}`;
-  return femaleRatio !== null ? `${base} · ${femaleRatio}% F` : base;
+  const vibe = loc.dominantVibe || "";
+  const count = loc.checkinCount ?? 0;
+  if (count > 0) return `${vibe} ${count} interested`.trim();
+  return vibe || "New spot";
 }
 
 const RatedCarousel = ({

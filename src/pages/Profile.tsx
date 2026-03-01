@@ -1,5 +1,6 @@
 import { useMemo, useState, useCallback, lazy, Suspense } from "react";
-import { RefreshCw, Loader, Trash2, UserPlus, LogOut } from "lucide-react";
+import { RefreshCw, Loader, Trash2, UserPlus, LogOut, Moon, Sun, Monitor } from "lucide-react";
+import { useTheme } from "@/hooks/useTheme";
 import { useNavigate } from "react-router-dom";
 import Sidebar from "@/components/Sidebar";
 import BottomNav from "@/components/BottomNav";
@@ -7,7 +8,7 @@ import CitySelector from "@/components/CitySelector";
 import CategoryFilter from "@/components/CategoryFilter";
 import { getRatedLocationIds } from "@/lib/userId";
 import type { RatedEntry } from "@/lib/userId";
-import { CATEGORY_COLORS, PHASE_LABELS, CATEGORY_GROUPS } from "@/data/mockData";
+import { PHASE_LABELS, CATEGORY_GROUPS } from "@/data/mockData";
 import type { Location } from "@/data/mockData";
 import { useLocations } from "@/hooks/useLocations";
 import { useAuth } from "@/contexts/AuthContext";
@@ -20,10 +21,8 @@ function getPhaseLabel(phase: string, userGender: string | null): { text: string
   if (phase === "checkin") {
     return { text: `${labels?.phase1 || "Checked in"} — tap for ${labels?.phase2 || "review"}`, color: "text-amber-500" };
   }
-  return { text: labels?.phase2 || "Reviewed", color: "text-[#2D5F2D]" };
+  return { text: labels?.phase2 || "Reviewed", color: "text-primary" };
 }
-
-const TWENTY_FOUR_HOURS = 24 * 60 * 60 * 1000;
 
 function timeAgo(ms: number): string {
   const diff = Date.now() - ms;
@@ -38,6 +37,7 @@ function timeAgo(ms: number): string {
 const Profile = () => {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
+  const { mode, setMode } = useTheme();
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [city, setCity] = useState("Ottawa");
   const GROUPS = useMemo(() => ["nightlife"] as const, []);
@@ -135,14 +135,12 @@ const Profile = () => {
     <div className="flex h-screen w-full">
       <Sidebar />
 
-      <main className="flex-1 overflow-y-auto bg-[#F5F5F5] p-6 pb-20 md:p-12 md:pb-12">
-        <div className="flex flex-col gap-8 md:gap-14">
+      <main className="flex-1 overflow-y-auto bg-background p-4 pb-20 md:p-8 md:pb-12 text-left">
+        <div className="max-w-2xl mx-auto flex flex-col gap-6">
           {/* Page Header */}
-          <div className="flex flex-col gap-2">
-            <h1 className="font-['Instrument_Serif'] text-4xl md:text-[64px] italic leading-none text-black">
-              Profile
-            </h1>
-            <p className="font-['Inter'] text-sm md:text-base text-[#666666]">
+          <div>
+            <h1 className="font-display text-4xl md:text-5xl font-bold text-foreground">Profile</h1>
+            <p className="text-sm text-muted-foreground mt-1">
               {loading ? (
                 <span className="flex items-center gap-1"><Loader className="h-3.5 w-3.5 animate-spin" /> Loading...</span>
               ) : (
@@ -164,10 +162,10 @@ const Profile = () => {
                 <button
                   key={c}
                   onClick={() => setCity(c)}
-                  className={`h-8 px-3.5 rounded-full font-['DM_Sans'] text-[13px] font-medium transition-colors ${
+                  className={`h-8 px-3.5 rounded-full text-[13px] font-medium transition-colors ${
                     city === c
-                      ? "bg-[#2D5F2D] text-white"
-                      : "bg-[#F0F0EE] text-[#666666] hover:bg-[#E0E0E0] border border-[#E0E0E0]"
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-surface text-muted-foreground hover:text-foreground border border-border"
                   }`}
                 >
                   {c}
@@ -184,51 +182,49 @@ const Profile = () => {
 
           {/* Ratings List */}
           {sortedRatings.length === 0 ? (
-            <div className="bg-white p-12 text-center">
+            <div className="text-center py-16 text-muted-foreground">
               <p className="text-4xl mb-3">📍</p>
-              <p className="font-['Instrument_Serif'] text-2xl italic text-black mb-1">No ratings yet</p>
-              <p className="font-['Inter'] text-sm text-[#888888] mb-4">
-                Go explore the map and rate some spots!
-              </p>
+              <p className="font-display font-semibold text-foreground">No ratings yet</p>
+              <p className="text-sm mt-1">Go explore the map and rate some spots!</p>
               <button
                 onClick={() => navigate("/map")}
-                className="px-5 py-3 bg-[#2D5F2D] text-white font-['Inter'] text-sm font-medium hover:opacity-90 transition-opacity"
+                className="mt-4 px-4 py-2 bg-primary text-primary-foreground text-sm font-medium hover:opacity-90 transition-opacity rounded-lg"
               >
                 Back to Map
               </button>
             </div>
           ) : (
             groupedRatings.map((group) => (
-              <div key={group.category} className="flex flex-col gap-4">
-                <div className="flex items-center gap-3">
-                  <h2 className="font-['Instrument_Serif'] text-2xl italic text-black">{group.category}</h2>
-                  <span className="font-['Inter'] text-[13px] text-[#888888]">
-                    {group.items.length} rated
-                  </span>
+              <div key={group.category} className="flex flex-col gap-3">
+                <div className="flex items-center gap-2">
+                  <h2 className="font-display font-bold text-lg text-foreground">{group.category}</h2>
+                  <span className="text-xs text-muted-foreground">{group.items.length} rated</span>
                 </div>
-                <div className="flex flex-col gap-3">
-                  {group.items.map(({ location, entry }) => {
+                <div className="rounded-xl border border-border overflow-hidden">
+                  {group.items.map(({ location, entry }, i) => {
                     const phaseInfo = getPhaseLabel(entry.phase, userGender);
                     const needsReview = entry.phase === "checkin";
                     return (
                       <div
                         key={location.id}
-                        className={`flex items-center gap-4 bg-white px-5 py-4 ${needsReview ? "border-l-4 border-l-amber-400" : ""}`}
+                        className={`flex items-center gap-4 px-4 py-3.5 transition-colors ${
+                          i < group.items.length - 1 ? "border-b border-border" : ""
+                        } ${needsReview ? "border-l-4 border-l-amber-400" : ""}`}
                       >
-                        <span className="text-2xl flex-shrink-0">
-                          {entry.emoji || location.dominantEmoji}
+                        <span className="text-2xl w-8 text-center flex-shrink-0">
+                          {entry.emoji || location.dominantVibe || "🔥"}
                         </span>
                         <div className="flex-1 min-w-0">
-                          <p className="font-['Inter'] text-sm font-medium text-black truncate">
+                          <p className="font-display font-semibold text-foreground truncate">
                             {location.name}
                           </p>
                           <div className="flex items-center gap-2 mt-0.5">
                             {entry.ratedAt > 0 && (
-                              <span className="font-['Inter'] text-xs text-[#AAAAAA]">
+                              <span className="text-xs text-muted-foreground">
                                 {timeAgo(entry.ratedAt)}
                               </span>
                             )}
-                            <span className={`font-['Inter'] text-xs ${phaseInfo.color}`}>
+                            <span className={`text-xs ${phaseInfo.color}`}>
                               {phaseInfo.text}
                             </span>
                           </div>
@@ -237,14 +233,14 @@ const Profile = () => {
                           {needsReview ? (
                             <button
                               onClick={() => navigate(`/map?review=${location.id}`)}
-                              className="flex items-center gap-1.5 px-4 py-2 bg-[#2D5F2D] text-white font-['Inter'] text-xs font-medium hover:opacity-90 transition-opacity"
+                              className="flex items-center gap-1.5 px-3 py-1.5 bg-primary text-primary-foreground text-xs font-medium rounded-lg hover:opacity-90 transition-opacity"
                             >
                               {PHASE_LABELS[userGender as keyof typeof PHASE_LABELS]?.phase2 || "Review"}
                             </button>
                           ) : (
                             <button
                               onClick={() => navigate(`/map?rate=${location.id}`)}
-                              className="flex items-center gap-1.5 px-4 py-2 bg-[#F5F5F5] hover:bg-[#E0E0E0] text-[#333333] font-['Inter'] text-xs font-medium transition-colors"
+                              className="flex items-center gap-1.5 px-3 py-1.5 bg-surface border border-border text-muted-foreground hover:text-foreground text-xs font-medium rounded-lg transition-colors"
                             >
                               <RefreshCw className="h-3 w-3" />
                               Re-rate
@@ -259,11 +255,36 @@ const Profile = () => {
             ))
           )}
 
+          {/* Appearance */}
+          <div className="flex flex-col gap-3 pt-6 border-t border-border">
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Appearance</p>
+            <div className="flex gap-2">
+              {([
+                { value: "dark", label: "Dark", Icon: Moon },
+                { value: "light", label: "Light", Icon: Sun },
+                { value: "system", label: "System", Icon: Monitor },
+              ] as const).map(({ value, label, Icon }) => (
+                <button
+                  key={value}
+                  onClick={() => setMode(value)}
+                  className={`flex items-center gap-1.5 flex-1 justify-center py-2 rounded-lg text-sm font-medium transition-all ${
+                    mode === value
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-surface text-muted-foreground hover:text-foreground border border-border"
+                  }`}
+                >
+                  <Icon className="h-3.5 w-3.5" />
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
+
           {/* Account Actions */}
-          <div className="flex flex-col gap-2 sm:flex-row sm:justify-center pt-6 border-t border-[#E0E0E0]">
+          <div className="flex flex-col gap-2 sm:flex-row sm:justify-center pt-6 border-t border-border">
             {user ? (
               <>
-                <div className="flex items-center justify-center gap-2 px-4 py-2 font-['Inter'] text-xs text-[#666666]">
+                <div className="flex items-center justify-center gap-2 px-4 py-2 text-xs text-muted-foreground">
                   {user.photoURL && (
                     <img src={user.photoURL} alt="" className="w-6 h-6 rounded-full" referrerPolicy="no-referrer" />
                   )}
@@ -271,7 +292,7 @@ const Profile = () => {
                 </div>
                 <button
                   onClick={async () => { await logout(); toast.success("Signed out"); }}
-                  className="flex items-center justify-center gap-1.5 bg-white px-4 py-2 font-['Inter'] text-xs font-medium text-[#666666] hover:bg-[#F5F5F5] transition-colors border border-[#E0E0E0] rounded-sm"
+                  className="flex items-center justify-center gap-1.5 bg-surface px-4 py-2 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors border border-border rounded-lg"
                 >
                   <LogOut className="h-3.5 w-3.5" />
                   Sign Out
@@ -280,7 +301,7 @@ const Profile = () => {
             ) : (
               <button
                 onClick={() => setShowAuthModal(true)}
-                className="flex items-center justify-center gap-1.5 bg-[#2D5F2D] px-4 py-2 font-['Inter'] text-xs font-medium text-white hover:bg-[#234A23] active:bg-[#1A3A1A] transition-colors rounded-sm"
+                className="flex items-center justify-center gap-1.5 bg-primary px-4 py-2 text-xs font-medium text-primary-foreground hover:opacity-90 transition-opacity rounded-lg"
               >
                 <UserPlus className="h-3.5 w-3.5" />
                 Sign In
@@ -288,7 +309,7 @@ const Profile = () => {
             )}
             <button
               onClick={handleDeleteAccount}
-              className="flex items-center justify-center gap-1.5 bg-white px-4 py-2 font-['Inter'] text-xs font-medium text-[#CC3333] hover:bg-[#FFF5F5] active:bg-[#FFEBEB] transition-colors border border-[#E0E0E0] rounded-sm"
+              className="flex items-center justify-center gap-1.5 bg-surface px-4 py-2 text-xs font-medium text-red-500 hover:bg-red-500/10 transition-colors border border-border rounded-lg"
             >
               <Trash2 className="h-3.5 w-3.5" />
               Delete Account

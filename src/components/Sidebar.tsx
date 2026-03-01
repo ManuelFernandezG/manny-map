@@ -1,7 +1,6 @@
-import { MapPin, Map, Activity, User, Moon, Sun } from "lucide-react";
+import { MapPin, Map, Activity, User } from "lucide-react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
-import { useState, useEffect } from "react";
 
 const NAV_ITEMS = [
   { label: "Map", path: "/map", icon: Map },
@@ -9,35 +8,10 @@ const NAV_ITEMS = [
   { label: "Profile", path: "/profile", icon: User },
 ];
 
-function useDarkMode() {
-  const [isDark, setIsDark] = useState(
-    () => document.documentElement.classList.contains("dark")
-  );
-
-  const toggle = () => {
-    const next = !isDark;
-    document.documentElement.classList.toggle("dark", next);
-    localStorage.setItem("mannymap_theme", next ? "dark" : "light");
-    setIsDark(next);
-  };
-
-  // Keep in sync if something else changes the class
-  useEffect(() => {
-    const observer = new MutationObserver(() => {
-      setIsDark(document.documentElement.classList.contains("dark"));
-    });
-    observer.observe(document.documentElement, { attributes: true, attributeFilter: ["class"] });
-    return () => observer.disconnect();
-  }, []);
-
-  return { isDark, toggle };
-}
-
 const Sidebar = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { user } = useAuth();
-  const { isDark, toggle } = useDarkMode();
 
   return (
     <aside className="hidden md:flex w-[240px] shrink-0 flex-col justify-between bg-white dark:bg-[#0F1F16] border-r border-[#E8E8E8] dark:border-[#243D2E]">
@@ -80,21 +54,8 @@ const Sidebar = () => {
         </nav>
       </div>
 
-      {/* Bottom: theme toggle + user avatar */}
+      {/* Bottom: user avatar */}
       <div className="flex flex-col gap-0 px-3 pb-4">
-        {/* Theme toggle */}
-        <button
-          onClick={toggle}
-          className={`flex items-center gap-1.5 self-start px-3 py-1.5 rounded font-['DM_Sans'] text-[12px] font-medium mb-3 transition-colors ${
-            isDark
-              ? "bg-[#243D2E] text-[#8FBF8F] hover:bg-[#2D5F2D]"
-              : "bg-[#EAF3EA] text-[#2D5F2D] hover:bg-[#D5EAD5]"
-          }`}
-        >
-          {isDark ? <Moon className="h-3 w-3" /> : <Sun className="h-3 w-3" />}
-          {isDark ? "Dark Mode" : "Light Mode"}
-        </button>
-
         {/* User avatar */}
         <div className="flex items-center gap-2.5 px-1">
           <div className="w-8 h-8 rounded-full bg-[#EAF3EA] dark:bg-[#2D5F2D] flex items-center justify-center shrink-0 overflow-hidden">

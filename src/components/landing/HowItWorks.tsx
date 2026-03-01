@@ -2,17 +2,17 @@ const STEPS = [
   {
     num: "1",
     title: "Find a Spot",
-    desc: "Browse the interactive map for bars, clubs, and lounges near you.",
+    desc: "Browse the map for bars and clubs near you. See who's going out tonight.",
   },
   {
     num: "2",
-    title: "Check In",
-    desc: "Record your visit and share basic info like group size and the crowd vibe.",
+    title: "Drop your Pre",
+    desc: "Check in before you head out. Let the crowd know you're interested.",
   },
   {
     num: "3",
-    title: "Rate the Vibe",
-    desc: "Leave a review so others know what to expect before they head out.",
+    title: "Post your Afters",
+    desc: "Rate the vibe after your visit. One tap, no fluff.",
   },
 ];
 

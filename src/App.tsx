@@ -26,11 +26,9 @@ const queryClient = new QueryClient({
 
 function useThemeInit() {
   useEffect(() => {
-    const isMobile = window.innerWidth < 768;
     const stored = localStorage.getItem("mannymap_theme");
 
-    if (isMobile) {
-      // Mobile: follow system preference, no manual override
+    if (stored === "system") {
       const mq = window.matchMedia("(prefers-color-scheme: dark)");
       document.documentElement.classList.toggle("dark", mq.matches);
       const onChange = (e: MediaQueryListEvent) => {
@@ -39,7 +37,7 @@ function useThemeInit() {
       mq.addEventListener("change", onChange);
       return () => mq.removeEventListener("change", onChange);
     } else {
-      // Desktop: stored preference, default to dark (current app look)
+      // null defaults to "dark" to preserve existing behavior
       document.documentElement.classList.toggle("dark", stored !== "light");
     }
   }, []);

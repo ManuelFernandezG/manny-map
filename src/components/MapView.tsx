@@ -110,6 +110,16 @@ const MapView = ({
     locations.forEach((loc) => {
       const { lat, lng } = loc.coordinates;
 
+      // Vibe-based color mapping
+      const vibeColors: Record<string, { fill: string; border: string }> = {
+        "🔥": { fill: "#f97316", border: "#c2410c" }, // orange
+        "🤯": { fill: "#ec4899", border: "#be185d" }, // pink
+        "😴": { fill: "#94a3b8", border: "#475569" }, // slate
+        "💀": { fill: "#6b7280", border: "#374151" }, // gray
+      };
+      const vibe = loc.dominantVibe;
+      const colors = (vibe && vibeColors[vibe]) || { fill: "#84cc16", border: "#166534" };
+
       // Layer 1: outer white halo (visibility on satellite)
       const halo = L.circleMarker([lat, lng], {
         radius: 9,
@@ -121,12 +131,12 @@ const MapView = ({
       halo.on("click", () => onLocationClickRef.current(loc));
       markersGroupRef.current.addLayer(halo);
 
-      // Layer 2: inner colored fill (same green for all markers)
+      // Layer 2: inner colored fill (vibe-based color)
       const fill = L.circleMarker([lat, lng], {
         radius: 5,
-        fillColor: "#84cc16",
+        fillColor: colors.fill,
         fillOpacity: 1,
-        color: "#166534",
+        color: colors.border,
         weight: 1.5,
       });
       fill.on("click", () => onLocationClickRef.current(loc));

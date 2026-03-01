@@ -1,15 +1,14 @@
 import { useState, useCallback, useMemo, useEffect, lazy, Suspense } from "react";
 import { Loader } from "lucide-react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useSearchParams } from "react-router-dom";
 import BottomNav from "@/components/BottomNav";
 import Sidebar from "@/components/Sidebar";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import CitySelector from "@/components/CitySelector";
-import CategoryFilter from "@/components/CategoryFilter";
 import LocationSearch from "@/components/LocationSearch";
-import { CITIES, CATEGORIES, CATEGORY_GROUPS, PHASE_LABELS } from "@/data/mockData";
+import TopLocationCard from "@/components/TopLocationCard";
+import { CITIES, CATEGORY_GROUPS, PHASE_LABELS } from "@/data/mockData";
 import type { Location } from "@/data/mockData";
-import type { CheckinData, ReviewData } from "@/lib/ratings";
+import type { CheckinData, ReviewData, LeaderboardEntry } from "@/lib/ratings";
 import { toast } from "sonner";
 import { useLocations, LOCATIONS_QUERY_VERSION } from "@/hooks/useLocations";
 import { getRatedLocationIds } from "@/lib/userId";
@@ -24,8 +23,7 @@ const LocationDetailModal = lazy(() => import("@/components/LocationDetailModal"
 const AuthModal = lazy(() => import("@/components/AuthModal"));
 
 const Index = () => {
-  const [city, setCity] = useState("Ottawa");
-  const [mapBounds, setMapBounds] = useState<[number, number, number, number] | null>(null);
+  const city = "Ottawa";
   const [ratedActiveIndex, setRatedActiveIndex] = useState(0);
   const [selectedLocation, setSelectedLocation] = useState<Location | null>(null);
   const [checkinLocation, setCheckinLocation] = useState<Location | null>(null);
@@ -40,12 +38,10 @@ const Index = () => {
   });
 
   const queryClient = useQueryClient();
-  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
 
   /** Nightlife-first: only Nightlife category group */
-  const GROUPS = useMemo(() => ["nightlife"] as const, []);
-  const [activeGroups, setActiveGroups] = useState<Set<string>>(() => new Set(GROUPS));
+  const activeGroups = new Set(["nightlife"]);
   const [ratedLocationIds, setRatedLocationIds] = useState<Map<string, RatedEntry>>(() => getRatedLocationIds());
   const { locations, loading, error } = useLocations({ city });
 
@@ -55,6 +51,62 @@ const Index = () => {
   const [userGender, setUserGender] = useState<string | null>(() => {
     try { return localStorage.getItem("mannymap_gender"); } catch { return null; }
   });
+
+  const cityConfig = CITIES[city];
+  const cityCenter = useMemo<[number, number]>(
+    () => [cityConfig.lat, cityConfig.lng],
+    [cityConfig.lat, cityConfig.lng]
+  );
+
+  // Use higher zoom for mobile devices (especially for Ottawa)
+  const isMobile = window.innerWidth < 768;
+  const cityZoom = useMemo(() => {
+    if (city === "Ottawa" && isMobile) {
+      return 15.5; // Tighter view for iPhone
+    }
+    return cityConfig.zoom;
+  }, [city, cityConfig.zoom, isMobile]);
+
+  // Reactive map position — updated when search selects a location
+  const [mapCenter, setMapCenter] = useState<[number, number]>(cityCenter);
+  const [mapZoom, setMapZoom] = useState(cityZoom);
+
+  // Leaderboard state — top venue tonight
+  const [leaderboard, setLeaderboard] = useState<LeaderboardEntry | null>(null);
+  const [leaderDismissed, setLeaderDismissed] = useState(() => {
+    try { return sessionStorage.getItem("mannymap_leader_dismissed") === "true"; } catch { return false; }
+  });
+
+  // Load leaderboard once on mount
+  useEffect(() => {
+    import("@/lib/ratings").then(({ getLeaderboard }) => {
+      getLeaderboard().then(setLeaderboard);
+    });
+  }, []);
+
+  const filteredLocations = useMemo(
+    () => locations.filter((l) => l.city === city),
+    [locations, city]
+  );
+
+  const locationsForMap = useMemo(
+    () =>
+      filteredLocations.filter((l) => {
+        const group = CATEGORY_GROUPS[l.category];
+        return group && activeGroups.has(group);
+      }),
+    [filteredLocations, activeGroups]
+  );
+
+  const ratedLocations = useMemo(
+    () =>
+      filteredLocations.filter(
+        (l) => ratedLocationIds.has(l.id) && activeGroups.has(CATEGORY_GROUPS[l.category] ?? "")
+      ),
+    [filteredLocations, ratedLocationIds, activeGroups]
+  );
+
+  const safeRatedIndex = Math.min(ratedActiveIndex, Math.max(0, ratedLocations.length - 1));
 
   // Handle deep-link params from Profile (/?review=xxx or /?rate=xxx)
   useEffect(() => {
@@ -76,83 +128,6 @@ const Index = () => {
     }
   }, [locations, searchParams]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const cityConfig = CITIES[city];
-  const cityCenter = useMemo<[number, number]>(
-    () => [cityConfig.lat, cityConfig.lng],
-    [cityConfig.lat, cityConfig.lng]
-  );
-
-  // Use higher zoom for mobile devices (especially for Ottawa)
-  const isMobile = window.innerWidth < 768;
-  const cityZoom = useMemo(() => {
-    if (city === "Ottawa" && isMobile) {
-      return 15.5; // Tighter view for iPhone
-    }
-    return cityConfig.zoom;
-  }, [city, cityConfig.zoom, isMobile]);
-  const filteredLocations = useMemo(
-    () => locations.filter((l) => l.city === city),
-    [locations, city]
-  );
-
-  const inViewLocations = useMemo(() => {
-    if (!mapBounds) return filteredLocations;
-    const [west, south, east, north] = mapBounds;
-    const centerLat = (south + north) / 2;
-    const centerLng = (west + east) / 2;
-    return filteredLocations
-      .filter((l) => {
-        const { lat, lng } = l.coordinates;
-        return lat >= south && lat <= north && lng >= west && lng <= east;
-      })
-      .sort((a, b) => {
-        const distA = (a.coordinates.lat - centerLat) ** 2 + (a.coordinates.lng - centerLng) ** 2;
-        const distB = (b.coordinates.lat - centerLat) ** 2 + (b.coordinates.lng - centerLng) ** 2;
-        return distA - distB;
-      });
-  }, [filteredLocations, mapBounds]);
-
-  const visibleLocations = useMemo(() => {
-    return inViewLocations.filter((l) => {
-      const group = CATEGORY_GROUPS[l.category];
-      return group && activeGroups.has(group);
-    });
-  }, [inViewLocations, activeGroups]);
-
-  const locationsForMap = useMemo(
-    () =>
-      filteredLocations.filter((l) => {
-        const group = CATEGORY_GROUPS[l.category];
-        return group && activeGroups.has(group);
-      }),
-    [filteredLocations, activeGroups]
-  );
-
-  const activeCategories = useMemo(
-    () => new Set(CATEGORIES.filter((c) => activeGroups.has(CATEGORY_GROUPS[c] ?? ""))),
-    [activeGroups]
-  );
-
-  const ratedCountByGroup = useMemo(() => {
-    const count: Record<string, number> = {};
-    filteredLocations.forEach((loc) => {
-      if (!ratedLocationIds.has(loc.id)) return;
-      const group = CATEGORY_GROUPS[loc.category];
-      if (group) count[group] = (count[group] ?? 0) + 1;
-    });
-    return count;
-  }, [filteredLocations, ratedLocationIds]);
-
-  const ratedLocations = useMemo(
-    () =>
-      filteredLocations.filter(
-        (l) => ratedLocationIds.has(l.id) && activeGroups.has(CATEGORY_GROUPS[l.category] ?? "")
-      ),
-    [filteredLocations, ratedLocationIds, activeGroups]
-  );
-
-  const safeRatedIndex = Math.min(ratedActiveIndex, Math.max(0, ratedLocations.length - 1));
-
   // Helper: determine what action a location needs
   const getLocationAction = useCallback((loc: Location): "checkin" | "review" => {
     const entry = ratedLocationIds.get(loc.id);
@@ -169,21 +144,6 @@ const Index = () => {
       setCheckinLocation(loc);
     }
   }, [getLocationAction]);
-
-  const handleGroupToggle = useCallback((groupId: string) => {
-    setActiveGroups((prev) => {
-      const next = new Set(prev);
-      if (next.has(groupId)) next.delete(groupId);
-      else next.add(groupId);
-      return next;
-    });
-  }, []);
-
-  const handleGroupToggleAll = useCallback(() => {
-    setActiveGroups((prev) =>
-      prev.size === GROUPS.length ? new Set<string>() : new Set(GROUPS)
-    );
-  }, [GROUPS]);
 
   const handleLocationClick = useCallback((loc: Location) => {
     setSelectedLocation(loc);
@@ -205,14 +165,6 @@ const Index = () => {
       setUserGender(data.gender);
       localStorage.setItem("mannymap_gender", data.gender);
       setRatedLocationIds(getRatedLocationIds());
-
-      const labels = PHASE_LABELS[data.gender as keyof typeof PHASE_LABELS];
-      toast.success(
-        data.gender === "Female"
-          ? "Locked in! Debrief after."
-          : "You're set! Come back for afters.",
-        { duration: 3000 }
-      );
       setTimeout(() => setCheckinLocation(null), 1500);
     },
     onError: () => {
@@ -232,15 +184,6 @@ const Index = () => {
       return submitReview(locationId, review);
     },
     onSuccess: () => {
-      // Optimistic update: bump totalRatings so list feels instant
-      queryClient.setQueryData<Location[]>(["locations", LOCATIONS_QUERY_VERSION, city], (old) => {
-        if (!old || !reviewLocation) return old;
-        return old.map((loc) =>
-          loc.id === reviewLocation.id
-            ? { ...loc, totalRatings: loc.totalRatings + 1 }
-            : loc
-        );
-      });
       queryClient.invalidateQueries({ queryKey: ["locations", LOCATIONS_QUERY_VERSION, city] });
       // Delayed refetch so Firestore trigger has time to run and we get fresh aggregates
       setTimeout(() => {
@@ -256,8 +199,6 @@ const Index = () => {
         }
       });
 
-      const labels = userGender && PHASE_LABELS[userGender as keyof typeof PHASE_LABELS];
-      toast.success(`${labels?.phase2 || "Review"} saved!`, { duration: 3000 });
       setTimeout(() => setReviewLocation(null), 1500);
     },
     onError: () => {
@@ -270,6 +211,10 @@ const Index = () => {
     reviewMutation.mutate({ locationId: reviewLocation.id, review });
   };
 
+  const leaderLocation = leaderboard
+    ? filteredLocations.find((l) => l.id === leaderboard.topLocationId)
+    : null;
+
   return (
     <div className="flex h-screen min-h-[100dvh] w-full max-w-[100vw] overflow-x-hidden overflow-y-hidden bg-background">
       <Sidebar />
@@ -279,11 +224,10 @@ const Index = () => {
         <Suspense fallback={<div className="h-full w-full bg-muted animate-pulse" />}>
           <MapView
             locations={locationsForMap}
-            center={cityCenter}
-            zoom={cityZoom}
+            center={mapCenter}
+            zoom={mapZoom}
             onLocationClick={handleLocationClick}
             onMapClick={handleMapClick}
-            onBoundsChange={setMapBounds}
           />
         </Suspense>
       </div>
@@ -312,14 +256,31 @@ const Index = () => {
       )}
 
       {/* Top bar */}
-      <div className="absolute top-0 left-0 right-0 z-[1001] pt-6 pb-2 px-2 sm:pt-8 sm:pb-4 sm:px-4">
-        <div className="flex justify-center">
+      <div className="absolute top-0 left-0 right-0 z-[1001] pt-6 pb-2 px-2 sm:pt-8 sm:pb-4 sm:px-4 flex flex-col gap-2 pointer-events-none">
+        <div className="flex justify-center pointer-events-auto">
           <LocationSearch
             locations={filteredLocations}
             ratedLocationIds={ratedLocationIds}
-            onLocationSelect={(loc) => setSelectedLocation(loc)}
+            onLocationSelect={(loc) => {
+              setSelectedLocation(loc);
+              setMapCenter([loc.coordinates.lat, loc.coordinates.lng]);
+              setMapZoom(17);
+            }}
           />
         </div>
+
+        {leaderboard && !leaderDismissed && leaderboard.checkinCountTonight > 0 && leaderLocation && (
+          <TopLocationCard
+            locationName={leaderLocation.name}
+            checkinCount={leaderboard.checkinCountTonight}
+            vibeEmoji={leaderboard.dominantVibeTonight}
+            onTap={() => setSelectedLocation(leaderLocation)}
+            onDismiss={() => {
+              setLeaderDismissed(true);
+              try { sessionStorage.setItem("mannymap_leader_dismissed", "true"); } catch {}
+            }}
+          />
+        )}
       </div>
 
 

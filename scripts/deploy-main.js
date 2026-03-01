@@ -10,6 +10,7 @@
  *   npm run deploy:prod
  */
 
+import { execSync } from "child_process";
 import dotenv from "dotenv";
 import { fileURLToPath } from "url";
 import { dirname, join } from "path";
@@ -24,6 +25,19 @@ if (!url) {
     "Missing VERCEL_DEPLOY_HOOK_MAIN in .env.local. Add your Deploy Hook URL from Vercel (Settings → Git → Deploy Hooks)."
   );
   process.exit(1);
+}
+
+// Prune old deployments before triggering new one (keeps current aliased production via --safe)
+try {
+  const out = execSync("vercel ls 2>&1", { encoding: "utf8" });
+  const urls = [...out.matchAll(/https:\/\/([\w-]+-manuels-projects-[\w]+\.vercel\.app)/g)]
+    .map(m => m[1]);
+  if (urls.length > 0) {
+    execSync(`vercel remove ${urls.join(" ")} --safe --yes`, { stdio: "inherit" });
+    console.log(`Pruned ${urls.length} old deployment(s).`);
+  }
+} catch (e) {
+  console.warn("Cleanup skipped:", e.message);
 }
 
 const res = await fetch(url, { method: "POST" });

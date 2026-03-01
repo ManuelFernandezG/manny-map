@@ -1,17 +1,4 @@
-import type { Location, AgeGroupData } from "./mockData";
-import { AGE_GROUPS } from "./mockData";
-
-const defaultAgeGroupData: AgeGroupData = {
-  dominant: { emoji: "🔥", word: "New", count: 0 },
-  totalRatings: 0,
-  topPairs: [],
-};
-
-function defaultRatingsByAgeGroup(): Record<string, AgeGroupData> {
-  return Object.fromEntries(
-    AGE_GROUPS.map((ag) => [ag, { ...defaultAgeGroupData }])
-  );
-}
+import type { Location } from "./mockData";
 
 function loc(
   id: string,
@@ -35,12 +22,6 @@ function loc(
     hours,
     isUserCreated: false,
     isPending: false,
-    totalRatings: 0,
-    ratingsByAgeGroup: defaultRatingsByAgeGroup(),
-    divergenceScore: 0,
-    divergenceFlagged: false,
-    dominantEmoji: "🔥",
-    dominantWord: "New",
   };
 }
 

@@ -1,269 +1,234 @@
-import { useState, useMemo } from "react";
-import { ArrowUpDown, ArrowUp, ArrowDown, ChevronDown } from "lucide-react";
+import { useEffect, useState } from "react";
 import Sidebar from "@/components/Sidebar";
 import BottomNav from "@/components/BottomNav";
-import PopularTimesBar from "@/components/PopularTimesBar";
 import { NIGHTLIFE_LOCATIONS } from "@/data/nightlifeLocations";
 import { GOOGLE_DATA } from "@/data/googleData";
-import type { DayPopularTimes } from "@/data/googleData";
+import { getRatedLocationIds } from "@/lib/userId";
+import type { RatedEntry } from "@/lib/userId";
+import type { LocationStats } from "@/lib/ratings";
+import { Star, GitCompare, X } from "lucide-react";
 
-// --- Mock pregame demographics (will be wired to real Firestore data later) ---
-
-const PREGAME_STATS = {
-  ageDistribution: { "18-22": 30, "23-28": 40, "29-35": 20, "36+": 10 } as Record<string, number>,
-  genderDistribution: { Female: 60, Male: 40 } as Record<string, number>,
-  waitTimeDistribution: { "<5 min": 15, "5-15 min": 45, "15-30 min": 30, "30+ min": 10 } as Record<string, number>,
-  groupSizeDistribution: { Solo: 10, "2-3": 50, "4-6": 30, "7+": 10 } as Record<string, number>,
+type Row = (typeof NIGHTLIFE_LOCATIONS)[number] & {
+  entry: RatedEntry;
+  stats: LocationStats | null;
 };
 
-// --- Mock vibe data (varied, not all "Crazy") ---
-
-const MOCK_VIBES: Record<string, { emoji: string; word: string; score: number; ratioFemale: number }> = {
-  "bar-heart-and-crown-ottawa": { emoji: "🔥", word: "Fire", score: 3, ratioFemale: 55 },
-  "club-sky-lounge-ottawa": { emoji: "😴", word: "Slow", score: 2, ratioFemale: 45 },
-  "club-room-104-ottawa": { emoji: "🤯", word: "Crazy", score: 4, ratioFemale: 40 },
-  "club-the-show-ottawa": { emoji: "😴", word: "Slow", score: 2, ratioFemale: 35 },
-  "bar-lieutenant-pump-ottawa": { emoji: "🔥", word: "Fire", score: 3, ratioFemale: 50 },
-  "bar-happy-fish-elgin-ottawa": { emoji: "🔥", word: "Fire", score: 3, ratioFemale: 55 },
-  "club-city-at-night-ottawa": { emoji: "🤯", word: "Crazy", score: 4, ratioFemale: 45 },
-  "bar-tomo-restaurant-ottawa": { emoji: "🔥", word: "Fire", score: 3, ratioFemale: 60 },
-  "club-berlin-nightclub-ottawa": { emoji: "🤯", word: "Crazy", score: 4, ratioFemale: 40 },
-  "bar-back-to-brooklyn-ottawa": { emoji: "💀", word: "Dead", score: 1, ratioFemale: 50 },
-  "bar-el-furniture-warehouse-ottawa": { emoji: "🔥", word: "Fire", score: 3, ratioFemale: 55 },
-  "bar-la-ptite-grenouille-ottawa": { emoji: "🤯", word: "Crazy", score: 4, ratioFemale: 35 },
-};
-
-// --- Distribution bar component ---
-
-function DistributionBar({ data, color }: { data: Record<string, number>; color: string }) {
+function RatioBar({ male, female }: { male: number; female: number }) {
+  const total = male + female;
+  if (total === 0) return null;
+  const mPct = Math.round((male / total) * 100);
+  const fPct = 100 - mPct;
   return (
-    <div className="flex flex-col gap-1.5">
-      {Object.entries(data).map(([label, pct]) => (
-        <div key={label} className="flex items-center gap-2">
-          <span className="font-['Inter'] text-[11px] text-[#666] w-16 text-right shrink-0">{label}</span>
-          <div className="flex-1 h-3 bg-[#F0F0F0] rounded-full overflow-hidden">
-            <div
-              className="h-full rounded-full transition-all"
-              style={{ width: `${pct}%`, backgroundColor: color }}
-            />
-          </div>
-          <span className="font-['Inter'] text-[10px] text-[#999] w-8">{pct}%</span>
-        </div>
-      ))}
+    <div className="mt-1.5">
+      <div className="flex justify-between text-[10px] text-muted-foreground mb-1">
+        <span>{mPct}% M</span>
+        <span>{fPct}% F</span>
+      </div>
+      <div className="h-1.5 rounded-full bg-border overflow-hidden flex">
+        <div className="h-full bg-blue-500" style={{ width: `${mPct}%` }} />
+        <div className="h-full bg-pink-400" style={{ width: `${fPct}%` }} />
+      </div>
     </div>
   );
 }
 
-// --- Fri/Sat busyness score (average % across 8pm–2am for Fri+Sat) ---
-
-function getFriSatScore(popularTimes: DayPopularTimes[] | null): number {
-  if (!popularTimes) return -1;
-  const hours = [20, 21, 22, 23, 0, 1, 2];
-  let total = 0;
-  let count = 0;
-  for (const d of popularTimes) {
-    if (d.day !== 5 && d.day !== 6) continue;
-    for (const h of d.popular_times ?? []) {
-      if (hours.includes(h.hour)) { total += h.percentage; count++; }
-    }
-  }
-  return count > 0 ? total / count : -1;
+function CompareCard({ row }: { row: Row }) {
+  const s = row.stats;
+  const google = GOOGLE_DATA[row.id] ?? null;
+  const count = s?.checkinCount ?? 0;
+  return (
+    <div className="flex-1 min-w-0 rounded-xl border border-border bg-surface p-4 space-y-3">
+      <div>
+        <p className="font-display font-bold text-base text-foreground leading-tight">{row.name}</p>
+        <p className="text-xs text-muted-foreground">{row.category}</p>
+      </div>
+      {row.entry.emoji && (
+        <div className="flex items-center gap-2">
+          <span className="text-2xl">{row.entry.emoji}</span>
+          <span className="text-xs text-muted-foreground capitalize">{row.entry.phase}</span>
+        </div>
+      )}
+      {count >= 10 && s && (
+        <>
+          <div className="flex items-center gap-2">
+            {s.dominantVibe && <span className="text-xl">{s.dominantVibe}</span>}
+            <div>
+              <p className="font-display font-bold text-lg text-foreground leading-none">{count}</p>
+              <p className="text-[10px] text-muted-foreground">interested</p>
+            </div>
+          </div>
+          <RatioBar male={s.maleCount} female={s.femaleCount} />
+        </>
+      )}
+      {google && (
+        <div className="flex items-center gap-1 text-xs text-muted-foreground">
+          <Star className="h-3 w-3 fill-amber-400 text-amber-400" />
+          <span className="font-medium text-foreground">{google.googleRating}</span>
+          <span>({google.googleReviewCount.toLocaleString()})</span>
+        </div>
+      )}
+    </div>
+  );
 }
 
-// --- Table sorting ---
+const Ratings = () => {
+  const [rows, setRows] = useState<Row[]>([]);
+  const [compareIds, setCompareIds] = useState<string[]>([]);
+  const comparing = compareIds.length === 2;
 
-type SortKey = "name" | "google" | "vibe" | "ratio" | "frisat";
-type SortDir = "asc" | "desc";
+  useEffect(() => {
+    const ratedMap = getRatedLocationIds();
+    if (ratedMap.size === 0) { setRows([]); return; }
 
-type ViewMode = "history" | "lastWeek";
+    const ratedLocs = NIGHTLIFE_LOCATIONS.filter((l) => ratedMap.has(l.id))
+      .sort((a, b) => {
+        const ta = ratedMap.get(a.id)?.ratedAt ?? 0;
+        const tb = ratedMap.get(b.id)?.ratedAt ?? 0;
+        return tb - ta;
+      });
 
-const Dashboard = () => {
-  const [viewMode, setViewMode] = useState<ViewMode>("history");
-  const [sortKey, setSortKey] = useState<SortKey>("google");
-  const [sortDir, setSortDir] = useState<SortDir>("desc");
-  const [pregameLocation, setPregameLocation] = useState<string>("all");
+    setRows(ratedLocs.map((l) => ({ ...l, entry: ratedMap.get(l.id)!, stats: null })));
 
-  const locations = useMemo(() => {
-    return NIGHTLIFE_LOCATIONS.map((loc) => {
-      const google = GOOGLE_DATA[loc.id];
-      const vibe = MOCK_VIBES[loc.id] ?? { emoji: "🔥", word: "New", score: 0, ratioFemale: 50 };
-      const friSatScore = getFriSatScore(google?.popularTimes ?? null);
-      return { ...loc, google, vibe, friSatScore };
+    import("@/lib/ratings").then(({ getLocationStats }) => {
+      Promise.all(ratedLocs.map((l) => getLocationStats(l.id))).then((allStats) => {
+        setRows(ratedLocs.map((l, i) => ({ ...l, entry: ratedMap.get(l.id)!, stats: allStats[i] })));
+      });
     });
   }, []);
 
-  const sortedLocations = useMemo(() => {
-    const list = [...locations];
-    list.sort((a, b) => {
-      let cmp = 0;
-      switch (sortKey) {
-        case "name": cmp = a.name.localeCompare(b.name); break;
-        case "google": cmp = (a.google?.googleRating ?? 0) - (b.google?.googleRating ?? 0); break;
-        case "vibe": cmp = a.vibe.score - b.vibe.score; break;
-        case "ratio": cmp = a.vibe.ratioFemale - b.vibe.ratioFemale; break;
-        case "frisat": cmp = a.friSatScore - b.friSatScore; break;
-      }
-      return sortDir === "asc" ? cmp : -cmp;
+  function toggleCompare(id: string) {
+    setCompareIds((prev) => {
+      if (prev.includes(id)) return prev.filter((x) => x !== id);
+      if (prev.length < 2) return [...prev, id];
+      return [prev[1], id];
     });
-    return list;
-  }, [locations, sortKey, sortDir]);
+  }
 
-  const handleSort = (key: SortKey) => {
-    if (sortKey === key) setSortDir((d) => (d === "asc" ? "desc" : "asc"));
-    else { setSortKey(key); setSortDir("desc"); }
-  };
-
-  const SortIcon = ({ column }: { column: SortKey }) => {
-    if (sortKey !== column) return <ArrowUpDown className="h-3 w-3 opacity-50" />;
-    return sortDir === "asc" ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />;
-  };
-
+  const compareRows = compareIds.map((id) => rows.find((r) => r.id === id)).filter(Boolean) as Row[];
 
   return (
     <div className="flex h-screen w-full">
       <Sidebar />
 
-      <main className="flex-1 overflow-y-auto bg-[#F5F5F5] p-4 pb-20 md:p-8 md:pb-12 text-left">
-        <div className="flex flex-col gap-5 md:gap-8 max-w-full">
-          {/* Page Header */}
-          <div className="flex flex-col gap-2">
-            <h1 className="font-['Instrument_Serif'] text-4xl md:text-[64px] italic leading-none text-black">
-              Ratings
-            </h1>
-            <p className="font-['Inter'] text-sm md:text-base text-[#666666]">
-              Track ratings and location engagement
-            </p>
+      <main className="flex-1 overflow-y-auto bg-background p-4 pb-20 md:p-8 md:pb-12 text-left">
+        <div className="max-w-2xl mx-auto flex flex-col gap-6">
+          {/* Header */}
+          <div className="flex items-end justify-between">
+            <div>
+              <h1 className="font-display text-4xl md:text-5xl font-bold text-foreground">My Ratings</h1>
+              <p className="text-sm text-muted-foreground mt-1">
+                {rows.length === 0 ? "No ratings yet" : `${rows.length} spot${rows.length !== 1 ? "s" : ""} rated`}
+              </p>
+            </div>
+            {rows.length >= 2 && (
+              <button
+                onClick={() => setCompareIds([])}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                  compareIds.length > 0
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-surface text-muted-foreground hover:text-foreground border border-border"
+                }`}
+              >
+                <GitCompare className="h-3.5 w-3.5" />
+                Compare
+                {compareIds.length > 0 && (
+                  <span className="ml-1 bg-primary-foreground/20 rounded-full px-1.5">{compareIds.length}/2</span>
+                )}
+              </button>
+            )}
           </div>
 
-          {/* Section A: Pregame Summary */}
-          <div className="flex flex-col gap-3">
-            <div className="flex items-center justify-between">
-              <h2 className="font-['Instrument_Serif'] text-xl md:text-2xl italic text-black">Pregame</h2>
-              <div className="relative">
-                <select
-                  value={pregameLocation}
-                  onChange={(e) => setPregameLocation(e.target.value)}
-                  className="appearance-none bg-white border border-[#E0E0E0] rounded-lg px-3 py-1.5 pr-8 font-['Inter'] text-base text-black cursor-pointer hover:border-[#999] transition-colors"
-                >
-                  <option value="all">All Locations</option>
-                  {NIGHTLIFE_LOCATIONS.map((loc) => (
-                    <option key={loc.id} value={loc.id}>{loc.name}</option>
-                  ))}
-                </select>
-                <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-[#888] pointer-events-none" />
+          {/* Compare panel */}
+          {comparing && (
+            <div className="rounded-xl border border-primary/30 bg-primary/5 p-4">
+              <div className="flex items-center justify-between mb-3">
+                <p className="text-xs font-display font-semibold text-primary uppercase tracking-wide">Comparing</p>
+                <button onClick={() => setCompareIds([])} className="p-1 rounded hover:bg-surface-hover">
+                  <X className="h-3.5 w-3.5 text-muted-foreground" />
+                </button>
+              </div>
+              <div className="flex gap-3">
+                {compareRows.map((row) => <CompareCard key={row.id} row={row} />)}
               </div>
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              <div className="bg-white p-4 flex flex-col gap-2">
-                <span className="font-['Inter'] text-[13px] text-[#888]">Age</span>
-                <DistributionBar data={PREGAME_STATS.ageDistribution} color="#2D5F2D" />
-              </div>
-              <div className="bg-white p-4 flex flex-col gap-2">
-                <span className="font-['Inter'] text-[13px] text-[#888]">Gender</span>
-                <DistributionBar data={PREGAME_STATS.genderDistribution} color="#6B4C9A" />
-              </div>
-              <div className="bg-white p-4 flex flex-col gap-2">
-                <span className="font-['Inter'] text-[13px] text-[#888]">Wait time</span>
-                <DistributionBar data={PREGAME_STATS.waitTimeDistribution} color="#1a6b8a" />
-              </div>
-              <div className="bg-white p-4 flex flex-col gap-2">
-                <span className="font-['Inter'] text-[13px] text-[#888]">Group size</span>
-                <DistributionBar data={PREGAME_STATS.groupSizeDistribution} color="#b07d3a" />
-              </div>
-            </div>
-          </div>
+          )}
 
-          {/* Section B: Location Table (with inline Popular Times) */}
-          <div className="flex flex-col gap-3 bg-white p-4 md:p-5 overflow-x-auto w-full">
-            <div className="flex items-center justify-between">
-              <h2 className="font-['Instrument_Serif'] text-xl md:text-2xl italic text-black">All Locations</h2>
-              <div className="flex bg-[#F0F0F0] rounded-lg p-0.5">
-                <button
-                  type="button"
-                  onClick={() => setViewMode("history")}
-                  className={`px-3 py-1.5 rounded-md font-['Inter'] text-xs font-medium transition-all ${
-                    viewMode === "history"
-                      ? "bg-white text-black shadow-sm"
-                      : "text-[#888] hover:text-black"
-                  }`}
-                >
-                  History
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setViewMode("lastWeek")}
-                  className={`px-3 py-1.5 rounded-md font-['Inter'] text-xs font-medium transition-all ${
-                    viewMode === "lastWeek"
-                      ? "bg-white text-black shadow-sm"
-                      : "text-[#888] hover:text-black"
-                  }`}
-                >
-                  Last Week
-                </button>
-              </div>
+          {/* Empty state */}
+          {rows.length === 0 && (
+            <div className="text-center py-16 text-muted-foreground">
+              <p className="text-4xl mb-3">🗺️</p>
+              <p className="font-display font-semibold text-foreground">No ratings yet</p>
+              <p className="text-sm mt-1">Tap a spot on the map to check in</p>
             </div>
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-[#F0F0F0]">
-                  {([
-                    ["name", "Location", "130px"],
-                    ...(viewMode === "history" ? [["google", "Google", "100px"]] as [SortKey, string, string][] : []),
-                    ...(viewMode === "lastWeek" ? [["vibe", "Vibe", "80px"]] as [SortKey, string, string][] : []),
-                    ...(viewMode === "lastWeek" ? [["ratio", "Ratio", "90px"]] as [SortKey, string, string][] : []),
-                    ...(viewMode === "history" ? [["frisat", "Fri/Sat", "300px"]] as [SortKey, string, string][] : []),
-                  ] as [SortKey, string, string][]).map(([key, label, minW]) => (
-                    <th key={key} className="py-2 text-left pr-3" style={{ minWidth: minW }}>
-                      <button
-                        type="button"
-                        onClick={() => handleSort(key)}
-                        className="flex items-center gap-1 font-['Inter'] text-xs max-[320px]:text-[10px] font-medium text-black hover:text-[#2D5F2D]"
-                      >
-                        {label} <SortIcon column={key} />
-                        {key === "frisat" && <span className="font-['Inter'] text-[8px] text-[#BBB] ml-0.5">8p–2a</span>}
-                      </button>
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {sortedLocations.map((loc, i) => {
-                  const g = loc.google;
-                  const v = loc.vibe;
-                  return (
-                    <tr key={loc.id} className={i < sortedLocations.length - 1 ? "border-b border-[#F0F0F0]" : ""}>
-                      <td className="py-2.5 font-['Inter'] text-sm max-[320px]:text-xs font-medium text-black">{loc.name}</td>
-                      {viewMode === "history" && (
-                        <td className="py-2.5 font-['Inter'] text-sm max-[320px]:text-xs text-black whitespace-nowrap">
-                          {g ? (
-                            <>
-                              {g.googleRating} <span className="text-amber-500">★</span>{" "}
-                              <span className="text-[#999] text-xs">({g.googleReviewCount.toLocaleString()})</span>
-                            </>
-                          ) : "—"}
-                        </td>
+          )}
+
+          {/* Location list */}
+          {rows.length > 0 && (
+            <div className="rounded-xl border border-border overflow-hidden">
+              {rows.map((row, i) => {
+                const s = row.stats;
+                const count = s?.checkinCount ?? 0;
+                const google = GOOGLE_DATA[row.id] ?? null;
+                const isSelected = compareIds.includes(row.id);
+
+                return (
+                  <div
+                    key={row.id}
+                    className={`flex items-center gap-4 px-4 py-3.5 transition-colors ${
+                      i < rows.length - 1 ? "border-b border-border" : ""
+                    } ${isSelected ? "bg-primary/5" : ""}`}
+                  >
+                    {/* Personal emoji or vibe */}
+                    <span className="text-2xl w-8 text-center flex-shrink-0">
+                      {row.entry.emoji || s?.dominantVibe || "—"}
+                    </span>
+
+                    {/* Name + meta */}
+                    <div className="flex-1 min-w-0">
+                      <p className="font-display font-semibold text-foreground truncate">{row.name}</p>
+                      <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                        <span className="text-xs text-muted-foreground">{row.category}</span>
+                        {google && (
+                          <span className="flex items-center gap-0.5 text-xs text-muted-foreground">
+                            <Star className="h-2.5 w-2.5 fill-amber-400 text-amber-400" />
+                            {google.googleRating}
+                          </span>
+                        )}
+                        <span className={`text-xs px-1.5 py-0.5 rounded-full ${
+                          row.entry.phase === "reviewed"
+                            ? "bg-primary/10 text-primary"
+                            : "bg-amber-500/10 text-amber-500"
+                        }`}>
+                          {row.entry.phase === "reviewed" ? "Reviewed" : "Checked in"}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Stats + compare */}
+                    <div className="text-right flex-shrink-0 flex flex-col items-end gap-1.5">
+                      {count >= 10 && (
+                        <p className="font-display font-bold text-foreground text-sm">
+                          {count} <span className="font-normal text-xs text-muted-foreground">going</span>
+                        </p>
                       )}
-                      {viewMode === "lastWeek" && (
-                        <td className="py-2.5 font-['Inter'] text-sm max-[320px]:text-xs text-black">
-                          <span className="mr-1" aria-hidden>{v.emoji}</span>
-                          {v.word}
-                        </td>
+                      {rows.length >= 2 && (
+                        <button
+                          onClick={() => toggleCompare(row.id)}
+                          className={`text-[10px] font-medium px-2 py-0.5 rounded-full transition-colors ${
+                            isSelected
+                              ? "bg-primary text-primary-foreground"
+                              : "bg-surface border border-border text-muted-foreground hover:text-foreground"
+                          }`}
+                        >
+                          {isSelected ? "✓ Selected" : "Compare"}
+                        </button>
                       )}
-                      {viewMode === "lastWeek" && (
-                        <td className="py-2.5 font-['Inter'] text-sm max-[320px]:text-xs text-[#666] whitespace-nowrap">
-                          {v.ratioFemale}% F / {100 - v.ratioFemale}% M
-                        </td>
-                      )}
-                      {viewMode === "history" && (
-                        <td className="py-2.5">
-                          <PopularTimesBar popularTimes={g?.popularTimes ?? null} />
-                        </td>
-                      )}
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
       </main>
 
@@ -272,4 +237,4 @@ const Dashboard = () => {
   );
 };
 
-export default Dashboard;
+export default Ratings;

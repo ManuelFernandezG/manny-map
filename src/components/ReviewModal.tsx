@@ -1,13 +1,8 @@
 import { useState } from "react";
 import { X, Check } from "lucide-react";
-import {
-  CATEGORY_GROUPS,
-  REVIEW_CONFIG,
-  CATEGORY_COLORS,
-  PHASE_LABELS,
-} from "@/data/mockData";
-import type { Location, CategoryGroup, ReviewEmoji } from "@/data/mockData";
-import type { ReviewData, ReviewScore } from "@/lib/ratings";
+import { VIBE_EMOJIS, WAIT_TIME_OPTIONS, CATEGORY_COLORS, PHASE_LABELS } from "@/data/mockData";
+import type { Location, ReviewEmoji } from "@/data/mockData";
+import type { ReviewData } from "@/lib/ratings";
 
 interface ReviewModalProps {
   location: Location;
@@ -22,38 +17,23 @@ const ReviewModal = ({
   onSubmit,
   onClose,
 }: ReviewModalProps) => {
-  const group: CategoryGroup = CATEGORY_GROUPS[location.category] || "nightlife";
-  const dimensions = REVIEW_CONFIG[group];
   const genderLabel = userGender && PHASE_LABELS[userGender as keyof typeof PHASE_LABELS];
   const phase2Label = genderLabel?.phase2 || "Review";
-
-  const [selections, setSelections] = useState<Record<string, ReviewEmoji | null>>({});
-  const [submitted, setSubmitted] = useState(false);
-
-  const allDimensionsFilled = dimensions.every((dim) => selections[dim.key]);
   const categoryColor = CATEGORY_COLORS[location.category] || CATEGORY_COLORS["Bar"];
 
-  const handleSelect = (dimKey: string, emoji: ReviewEmoji) => {
-    setSelections((prev) => ({
-      ...prev,
-      [dimKey]: prev[dimKey]?.emoji === emoji.emoji ? null : emoji,
-    }));
-  };
+  const [vibeSelection, setVibeSelection] = useState<ReviewEmoji | null>(null);
+  const [waitTime, setWaitTime] = useState("");
+  const [submitted, setSubmitted] = useState(false);
+
+  const canSubmit = !!vibeSelection && !!waitTime;
 
   const handleSubmit = () => {
-    if (!allDimensionsFilled) return;
+    if (!canSubmit) return;
     setSubmitted(true);
-
-    const review: ReviewData = {};
-    for (const dim of dimensions) {
-      const sel = selections[dim.key];
-      if (sel) {
-        const score: ReviewScore = { emoji: sel.emoji, word: sel.word, score: sel.score };
-        (review as any)[dim.key] = score;
-      }
-    }
-
-    setTimeout(() => onSubmit(review), 1200);
+    setTimeout(() => onSubmit({
+      vibe: { emoji: vibeSelection.emoji, word: vibeSelection.word },
+      waitTime,
+    }), 1200);
   };
 
   return (
@@ -94,46 +74,53 @@ const ReviewModal = ({
             </div>
 
             <div className="px-5 py-6 space-y-6">
-              {/* Emoji dimensions */}
-              {dimensions.map((dim) => (
-                <div key={dim.key}>
-                  {dimensions.length > 1 && (
-                    <p className="text-sm font-display font-semibold text-foreground mb-3">
-                      {dim.label}
-                    </p>
-                  )}
-                  <div className="grid grid-cols-4 gap-3">
-                    {dim.emojis.map((e) => {
-                      const isSelected = selections[dim.key]?.emoji === e.emoji;
-                      return (
-                        <button
-                          key={e.emoji}
-                          onClick={() => handleSelect(dim.key, e)}
-                          className={`flex flex-col items-center gap-1.5 p-3 rounded-xl transition-all duration-150 ${
-                            isSelected
-                              ? "bg-primary/15 border-2 border-primary scale-105"
-                              : "bg-surface hover:bg-surface-hover border-2 border-transparent hover:scale-105"
-                          }`}
-                        >
-                          <span className="text-3xl sm:text-4xl">{e.emoji}</span>
-                          <span
-                            className={`text-xs font-medium ${
-                              isSelected ? "text-primary" : "text-muted-foreground"
-                            }`}
-                          >
-                            {e.word}
-                          </span>
-                        </button>
-                      );
-                    })}
-                  </div>
+              {/* Vibe */}
+              <div className="grid grid-cols-4 gap-3">
+                {VIBE_EMOJIS.map((e) => {
+                  const isSelected = vibeSelection?.emoji === e.emoji;
+                  return (
+                    <button
+                      key={e.emoji}
+                      onClick={() => setVibeSelection(isSelected ? null : e)}
+                      className={`flex flex-col items-center gap-1.5 p-3 rounded-xl transition-all duration-150 ${
+                        isSelected
+                          ? "bg-primary/15 border-2 border-primary scale-105"
+                          : "bg-surface hover:bg-surface-hover border-2 border-transparent hover:scale-105"
+                      }`}
+                    >
+                      <span className="text-3xl sm:text-4xl">{e.emoji}</span>
+                      <span className={`text-xs font-medium ${isSelected ? "text-primary" : "text-muted-foreground"}`}>
+                        {e.word}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Wait time */}
+              <div>
+                <p className="text-sm font-display font-semibold text-foreground mb-3">Wait to get in</p>
+                <div className="flex gap-2">
+                  {WAIT_TIME_OPTIONS.map((opt) => (
+                    <button
+                      key={opt}
+                      onClick={() => setWaitTime(opt)}
+                      className={`flex-1 py-2 rounded-lg text-xs font-medium transition-all ${
+                        waitTime === opt
+                          ? "bg-primary text-primary-foreground"
+                          : "bg-surface text-muted-foreground hover:text-foreground"
+                      }`}
+                    >
+                      {opt}
+                    </button>
+                  ))}
                 </div>
-              ))}
+              </div>
 
               {/* Submit */}
               <button
                 onClick={handleSubmit}
-                disabled={!allDimensionsFilled}
+                disabled={!canSubmit}
                 className="w-full py-3.5 rounded-xl bg-primary text-primary-foreground font-display font-bold text-base transition-all disabled:opacity-40 disabled:cursor-not-allowed hover:opacity-90"
               >
                 Submit {phase2Label}

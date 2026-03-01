@@ -44,10 +44,10 @@ const LocationSearch = ({
     }
   }, [locations]);
 
-  // Get top 3 suggestions (highest rated locations)
+  // Get top 3 suggestions (highest checkin count)
   const topSuggestions = locations
-    .filter(l => l.totalRatings > 0)
-    .sort((a, b) => b.totalRatings - a.totalRatings)
+    .filter(l => (l.checkinCount ?? 0) > 0)
+    .sort((a, b) => (b.checkinCount ?? 0) - (a.checkinCount ?? 0))
     .slice(0, 3);
 
   // Filter locations based on search term
@@ -153,7 +153,7 @@ const LocationSearch = ({
                   className="w-full text-left px-4 py-2.5 hover:bg-[#F5F5F5] transition-colors group"
                 >
                   <div className="flex items-center gap-2">
-                    <span className="text-base">{location.dominantEmoji}</span>
+                    <span className="text-base">{location.dominantVibe || "🔥"}</span>
                     <span className="font-['DM_Sans'] font-medium text-[#333] text-sm group-hover:text-[#2D5F2D]">
                       {location.name}
                     </span>
@@ -178,15 +178,17 @@ const LocationSearch = ({
                 >
                   <div className="flex items-center justify-between gap-2">
                     <div className="flex items-center gap-2 flex-1 min-w-0">
-                      <span className="text-base">{location.dominantEmoji}</span>
+                      <span className="text-base">{location.dominantVibe || "🔥"}</span>
                       <span className="font-['DM_Sans'] font-medium text-[#333] text-sm group-hover:text-[#2D5F2D] truncate">
                         {location.name}
                       </span>
                     </div>
-                    <div className="flex items-center gap-1.5 text-xs text-[#888] flex-shrink-0">
-                      <TrendingUp className="h-3 w-3" />
-                      <span>{location.totalRatings}</span>
-                    </div>
+                    {(location.checkinCount ?? 0) > 0 && (
+                      <div className="flex items-center gap-1.5 text-xs text-[#888] flex-shrink-0">
+                        <TrendingUp className="h-3 w-3" />
+                        <span>{location.checkinCount}</span>
+                      </div>
+                    )}
                   </div>
                 </button>
               ))}
@@ -207,7 +209,7 @@ const LocationSearch = ({
               <div className="flex items-start justify-between gap-2">
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
-                    <span className="text-lg">{ratedLocationIds?.get(location.id)?.emoji || location.dominantEmoji}</span>
+                    <span className="text-lg">{ratedLocationIds?.get(location.id)?.emoji || location.dominantVibe || "🔥"}</span>
                     <h3 className="font-['DM_Sans'] font-medium text-[#333] truncate group-hover:text-[#2D5F2D]">
                       {location.name}
                     </h3>
@@ -216,9 +218,12 @@ const LocationSearch = ({
                     <span className="px-2 py-0.5 bg-[#2D5F2D]/10 text-xs font-medium text-[#2D5F2D] rounded">
                       {location.category}
                     </span>
-                    <span>{location.dominantWord}</span>
-                    <span>·</span>
-                    <span>{location.totalRatings} ratings</span>
+                    {(location.checkinCount ?? 0) > 0 && (
+                      <>
+                        <span>·</span>
+                        <span>{location.checkinCount} interested</span>
+                      </>
+                    )}
                   </div>
                 </div>
               </div>

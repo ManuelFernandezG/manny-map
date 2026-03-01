@@ -1,9 +1,8 @@
-import { useState, useEffect } from "react";
-import { X, Check, TrendingUp } from "lucide-react";
+import { useState } from "react";
+import { X, Check } from "lucide-react";
 import {
   AGE_GROUPS,
   GENDERS,
-  TRAVEL_TIME_OPTIONS,
   GROUP_SIZE_OPTIONS,
   COMPANION_OPTIONS,
   CATEGORY_COLORS,
@@ -11,7 +10,6 @@ import {
 } from "@/data/mockData";
 import type { Location } from "@/data/mockData";
 import type { CheckinData } from "@/lib/ratings";
-import type { RecentTrends } from "@/lib/ratings";
 
 interface CheckinModalProps {
   location: Location;
@@ -33,24 +31,15 @@ const CheckinModal = ({
 
   const [ageGroup, setAgeGroup] = useState(userAgeGroup || "");
   const [gender, setGender] = useState(userGender || "");
-  const [travelTime, setTravelTime] = useState("");
   const [groupSize, setGroupSize] = useState("");
   const [companion, setCompanion] = useState("");
   const [submitted, setSubmitted] = useState(false);
-  const [trends, setTrends] = useState<RecentTrends | null>(null);
 
   const needsAgeGate = !userAgeGroup;
   const needsGenderGate = !userGender;
   const isSolo = groupSize === "Solo";
 
-  // Fetch recent trends (use cached location.recentTrendsLast7d when present)
-  useEffect(() => {
-    import("@/lib/ratings").then(({ getRecentTrends }) => {
-      getRecentTrends(location.id, location).then(setTrends);
-    });
-  }, [location.id, location]);
-
-  const canSubmit = ageGroup && gender && travelTime && groupSize && (isSolo || companion);
+  const canSubmit = ageGroup && gender && groupSize && (isSolo || companion);
 
   const handleSubmit = () => {
     if (!canSubmit) return;
@@ -59,7 +48,6 @@ const CheckinModal = ({
       onSubmit({
         ageGroup,
         gender,
-        travelTime,
         groupSize,
         ...(!isSolo && { companion }),
       });
@@ -108,28 +96,6 @@ const CheckinModal = ({
             </div>
 
             <div className="overflow-y-auto max-h-[calc(90vh-80px)] px-5 py-5 space-y-5">
-              {/* Recent trends */}
-              {trends && trends.ratingCount > 0 && (
-                <div className="rounded-lg bg-surface border border-border px-4 py-3">
-                  <div className="flex items-center gap-2 mb-2">
-                    <TrendingUp className="h-3.5 w-3.5 text-primary" />
-                    <span className="text-xs font-display font-semibold text-foreground">This week</span>
-                  </div>
-                  <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                    {trends.dominantEmoji && (
-                      <span className="text-lg">{trends.dominantEmoji}</span>
-                    )}
-                    {trends.avgScore > 0 && (
-                      <span>{trends.avgScore}/4 avg</span>
-                    )}
-                    <span>{trends.ratingCount} visits</span>
-                    {trends.topCompanion && (
-                      <span>Most go with {trends.topCompanion}</span>
-                    )}
-                  </div>
-                </div>
-              )}
-
               {/* Demographics gate */}
               {(needsAgeGate || needsGenderGate) && (
                 <div className="space-y-4">
@@ -175,26 +141,6 @@ const CheckinModal = ({
                   )}
                 </div>
               )}
-
-              {/* Travel time */}
-              <div>
-                <p className="text-sm font-display font-semibold text-foreground mb-2">Travel time</p>
-                <div className="flex gap-2">
-                  {TRAVEL_TIME_OPTIONS.map((t) => (
-                    <button
-                      key={t}
-                      onClick={() => setTravelTime(t)}
-                      className={`flex-1 py-2 rounded-lg text-xs font-medium transition-all ${
-                        travelTime === t
-                          ? "bg-primary text-primary-foreground"
-                          : "bg-surface text-muted-foreground hover:text-foreground"
-                      }`}
-                    >
-                      {t}
-                    </button>
-                  ))}
-                </div>
-              </div>
 
               {/* Group size */}
               <div>
@@ -247,7 +193,7 @@ const CheckinModal = ({
                 disabled={!canSubmit}
                 className="w-full py-3.5 rounded-xl bg-primary text-primary-foreground font-display font-bold text-base transition-all disabled:opacity-40 disabled:cursor-not-allowed hover:opacity-90"
               >
-                {phase1Label}
+                I'm Going
               </button>
             </div>
           </>
